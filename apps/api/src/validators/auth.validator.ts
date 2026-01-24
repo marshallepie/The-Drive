@@ -1,5 +1,5 @@
 import Joi from 'joi'
-import { UserRole } from '@drive/shared'
+import { UserRole } from '../types'
 
 export const registerSchema = Joi.object({
   email: Joi.string().email().required().messages({

@@ -1,5 +1,5 @@
 import Joi from 'joi'
-import { VehicleCondition, FuelType, TransmissionType, VehicleStatus } from '@drive/shared'
+import { VehicleCondition, FuelType, TransmissionType, VehicleStatus } from '../types'
 
 export const createVehicleSchema = Joi.object({
   make: Joi.string().min(2).max(100).required(),

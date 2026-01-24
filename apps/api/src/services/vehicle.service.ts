@@ -1,5 +1,5 @@
 import { pool } from '../db/config'
-import { VehicleSearchFilters } from '@drive/shared'
+import { VehicleSearchFilters } from '../types'
 
 export class VehicleService {
   /**
@@ -102,7 +102,7 @@ export class VehicleService {
     // Validate sortBy to prevent SQL injection
     const validSortColumns = ['price', 'year', 'mileage', 'created_at']
     const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'created_at'
-    const sortDirection = sortOrder === 'asc' ? 'ASC' : 'DESC'
+    const sortDirection = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC'
 
     // Get total count
     const countQuery = `SELECT COUNT(*) FROM vehicles ${whereClause}`
