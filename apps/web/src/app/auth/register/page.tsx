@@ -37,7 +37,7 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      const { confirmPassword, ...registerData } = formData
+      const { confirmPassword: _confirmPassword, ...registerData } = formData
       const response = await apiClient.post('/api/v1/auth/register', registerData)
 
       if (response.data.status === 'success') {

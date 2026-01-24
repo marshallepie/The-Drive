@@ -8,7 +8,7 @@ import ImageUpload from '@/components/ImageUpload'
 
 export default function NewVehiclePage() {
   const router = useRouter()
-  const { user, isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
