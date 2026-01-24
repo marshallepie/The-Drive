@@ -1,0 +1,67 @@
+import Joi from 'joi'
+import { VehicleCondition, FuelType, TransmissionType, VehicleStatus } from '@drive/shared'
+
+export const createVehicleSchema = Joi.object({
+  make: Joi.string().min(2).max(100).required(),
+  model: Joi.string().min(1).max(100).required(),
+  year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 1).required(),
+  vin: Joi.string().length(17).pattern(/^[A-HJ-NPR-Z0-9]{17}$/).required().messages({
+    'string.pattern.base': 'VIN must be a valid 17-character Vehicle Identification Number',
+  }),
+  condition: Joi.string().valid(...Object.values(VehicleCondition)).required(),
+  mileage: Joi.number().integer().min(0).required(),
+  price: Joi.number().positive().required(),
+  currency: Joi.string().length(3).default('USD'),
+  fuelType: Joi.string().valid(...Object.values(FuelType)).required(),
+  transmission: Joi.string().valid(...Object.values(TransmissionType)).required(),
+  engineSize: Joi.string().max(50).optional(),
+  color: Joi.string().min(2).max(50).required(),
+  description: Joi.string().min(10).max(2000).required(),
+  features: Joi.array().items(Joi.string()).default([]),
+  images: Joi.array().items(Joi.string()).default([]),
+  locationCity: Joi.string().min(2).max(100).required(),
+  locationState: Joi.string().min(2).max(100).required(),
+  locationCountry: Joi.string().min(2).max(100).required(),
+  locationZipCode: Joi.string().min(3).max(20).required(),
+  status: Joi.string().valid(...Object.values(VehicleStatus)).default('DRAFT'),
+})
+
+export const updateVehicleSchema = Joi.object({
+  make: Joi.string().min(2).max(100).optional(),
+  model: Joi.string().min(1).max(100).optional(),
+  year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 1).optional(),
+  condition: Joi.string().valid(...Object.values(VehicleCondition)).optional(),
+  mileage: Joi.number().integer().min(0).optional(),
+  price: Joi.number().positive().optional(),
+  currency: Joi.string().length(3).optional(),
+  fuelType: Joi.string().valid(...Object.values(FuelType)).optional(),
+  transmission: Joi.string().valid(...Object.values(TransmissionType)).optional(),
+  engineSize: Joi.string().max(50).optional(),
+  color: Joi.string().min(2).max(50).optional(),
+  description: Joi.string().min(10).max(2000).optional(),
+  features: Joi.array().items(Joi.string()).optional(),
+  images: Joi.array().items(Joi.string()).optional(),
+  locationCity: Joi.string().min(2).max(100).optional(),
+  locationState: Joi.string().min(2).max(100).optional(),
+  locationCountry: Joi.string().min(2).max(100).optional(),
+  locationZipCode: Joi.string().min(3).max(20).optional(),
+  status: Joi.string().valid(...Object.values(VehicleStatus)).optional(),
+})
+
+export const vehicleSearchSchema = Joi.object({
+  make: Joi.string().optional(),
+  model: Joi.string().optional(),
+  minYear: Joi.number().integer().min(1900).optional(),
+  maxYear: Joi.number().integer().max(new Date().getFullYear() + 1).optional(),
+  minPrice: Joi.number().positive().optional(),
+  maxPrice: Joi.number().positive().optional(),
+  condition: Joi.string().valid(...Object.values(VehicleCondition)).optional(),
+  fuelType: Joi.string().valid(...Object.values(FuelType)).optional(),
+  transmission: Joi.string().valid(...Object.values(TransmissionType)).optional(),
+  maxMileage: Joi.number().integer().min(0).optional(),
+  location: Joi.string().optional(),
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  sortBy: Joi.string().valid('price', 'year', 'mileage', 'createdAt').default('createdAt'),
+  sortOrder: Joi.string().valid('asc', 'desc').default('desc'),
+})

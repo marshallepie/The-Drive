@@ -15,6 +15,7 @@ import userRoutes from './routes/user.routes'
 import transactionRoutes from './routes/transaction.routes'
 import financeRoutes from './routes/finance.routes'
 import messageRoutes from './routes/message.routes'
+import uploadRoutes from './routes/upload.routes'
 
 dotenv.config()
 
@@ -44,6 +45,7 @@ app.use('/api/v1/users', userRoutes)
 app.use('/api/v1/transactions', transactionRoutes)
 app.use('/api/v1/finance', financeRoutes)
 app.use('/api/v1/messages', messageRoutes)
+app.use('/api/v1/upload', uploadRoutes)
 
 // Error handlers
 app.use(notFoundHandler)
