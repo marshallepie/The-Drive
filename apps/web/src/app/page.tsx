@@ -2,7 +2,7 @@ import Image from 'next/image'
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-black text-white p-8">
+    <main className="min-h-screen bg-black text-white py-12 px-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold mb-8">
           Welcome to The Drive
