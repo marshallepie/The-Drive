@@ -1,12 +1,21 @@
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white py-12 px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">
-          Welcome to The Drive
-        </h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-4xl font-bold">
+            Welcome to The Drive
+          </h1>
+          <Link
+            href="/vehicles"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded transition-colors"
+          >
+            Browse Vehicles
+          </Link>
+        </div>
 
         {/* Hero Image */}
         <div className="mb-12 rounded-lg overflow-hidden shadow-xl">

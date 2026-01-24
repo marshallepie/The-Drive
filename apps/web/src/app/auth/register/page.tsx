@@ -1,13 +1,11 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import apiClient from '@/lib/api/client'
 import { UserRole } from '@drive/shared'
 
 export default function RegisterPage() {
-  const router = useRouter()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
