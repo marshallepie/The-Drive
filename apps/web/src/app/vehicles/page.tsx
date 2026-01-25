@@ -64,9 +64,21 @@ export default function VehiclesPage() {
     location: '',
   })
 
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(filters)
+
+  // Debounce filter changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAppliedFilters(filters)
+      setPage(1) // Reset to page 1 when filters change
+    }, 500) // Wait 500ms after user stops typing
+
+    return () => clearTimeout(timer)
+  }, [filters])
+
   useEffect(() => {
     fetchVehicles()
-  }, [page, filters])
+  }, [page, appliedFilters])
 
   const fetchVehicles = async () => {
     try {
@@ -75,16 +87,16 @@ export default function VehiclesPage() {
       // Build query params
       const params = new URLSearchParams({ page: page.toString(), limit: '12' })
 
-      if (filters.make) params.append('make', filters.make)
-      if (filters.model) params.append('model', filters.model)
-      if (filters.minPrice) params.append('minPrice', filters.minPrice)
-      if (filters.maxPrice) params.append('maxPrice', filters.maxPrice)
-      if (filters.minYear) params.append('minYear', filters.minYear)
-      if (filters.maxYear) params.append('maxYear', filters.maxYear)
-      if (filters.condition) params.append('condition', filters.condition)
-      if (filters.fuelType) params.append('fuelType', filters.fuelType)
-      if (filters.transmission) params.append('transmission', filters.transmission)
-      if (filters.location) params.append('location', filters.location)
+      if (appliedFilters.make) params.append('make', appliedFilters.make)
+      if (appliedFilters.model) params.append('model', appliedFilters.model)
+      if (appliedFilters.minPrice) params.append('minPrice', appliedFilters.minPrice)
+      if (appliedFilters.maxPrice) params.append('maxPrice', appliedFilters.maxPrice)
+      if (appliedFilters.minYear) params.append('minYear', appliedFilters.minYear)
+      if (appliedFilters.maxYear) params.append('maxYear', appliedFilters.maxYear)
+      if (appliedFilters.condition) params.append('condition', appliedFilters.condition)
+      if (appliedFilters.fuelType) params.append('fuelType', appliedFilters.fuelType)
+      if (appliedFilters.transmission) params.append('transmission', appliedFilters.transmission)
+      if (appliedFilters.location) params.append('location', appliedFilters.location)
 
       const response = await apiClient.get(`/api/v1/vehicles?${params.toString()}`)
 
@@ -102,11 +114,10 @@ export default function VehiclesPage() {
 
   const handleFilterChange = (key: keyof Filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
-    setPage(1) // Reset to first page when filters change
   }
 
   const clearFilters = () => {
-    setFilters({
+    const emptyFilters = {
       make: '',
       model: '',
       minPrice: '',
@@ -117,7 +128,9 @@ export default function VehiclesPage() {
       fuelType: '',
       transmission: '',
       location: '',
-    })
+    }
+    setFilters(emptyFilters)
+    setAppliedFilters(emptyFilters)
     setPage(1)
   }
 
