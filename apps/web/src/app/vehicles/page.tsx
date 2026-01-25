@@ -304,7 +304,7 @@ export default function VehiclesPage() {
           {/* Vehicles Grid */}
           <div className="flex-1">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {vehicles.map((vehicle) => (
+              {vehicles.map((vehicle) => (
             <Link
               key={vehicle.id}
               href={`/vehicles/${vehicle.id}`}
@@ -360,15 +360,14 @@ export default function VehiclesPage() {
                 </div>
               </div>
             </Link>
-          ))}
-        </div>
+              ))}
+            </div>
 
             {vehicles.length === 0 && !loading && (
               <div className="text-center py-12">
                 <p className="text-xl text-gray-400">No vehicles found</p>
               </div>
             )}
-            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
