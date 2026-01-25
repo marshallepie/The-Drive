@@ -5,7 +5,7 @@ export default function Home() {
     <main className="min-h-screen bg-black text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Image - different images for mobile vs desktop */}
-        <div className="mb-12 overflow-hidden shadow-xl">
+        <div className="mb-8 overflow-hidden shadow-xl">
           {/* Mobile Image */}
           <div className="block md:hidden">
             <Image
@@ -28,6 +28,13 @@ export default function Home() {
               priority
             />
           </div>
+        </div>
+
+        {/* Mobile Tagline */}
+        <div className="block md:hidden mb-12 text-center px-4">
+          <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
+            The Web 3 Marketplace And Vault For Collector Cars
+          </h1>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
