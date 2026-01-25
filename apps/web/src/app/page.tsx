@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default function Home() {
   return (
@@ -38,12 +39,17 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 border border-gray-700 rounded-lg bg-gray-900">
-            <h2 className="text-2xl font-semibold mb-2 text-white">Browse Vehicles</h2>
+          <Link
+            href="/vehicles"
+            className="p-6 border border-gray-700 rounded-lg bg-gray-900 hover:bg-gray-800 hover:border-blue-500 transition-all cursor-pointer group"
+          >
+            <h2 className="text-2xl font-semibold mb-2 text-white group-hover:text-blue-400 transition-colors">
+              Browse Vehicles
+            </h2>
             <p className="text-gray-300">
               Discover thousands of vehicles from dealers and private sellers
             </p>
-          </div>
+          </Link>
 
           <div className="p-6 border border-gray-700 rounded-lg bg-gray-900">
             <h2 className="text-2xl font-semibold mb-2 text-white">Secure Payments</h2>
