@@ -16,7 +16,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/vehicles"
-              className="text-gray-300 hover:text-white transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
             >
               Browse Vehicles
             </Link>

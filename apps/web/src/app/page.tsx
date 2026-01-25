@@ -1,32 +1,33 @@
 import Image from 'next/image'
-import Link from 'next/link'
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-black text-white py-12 px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold">
-            Welcome to The Drive
-          </h1>
-          <Link
-            href="/vehicles"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded transition-colors"
-          >
-            Browse Vehicles
-          </Link>
-        </div>
-
-        {/* Hero Image */}
-        <div className="mb-12 rounded-lg overflow-hidden shadow-xl">
-          <Image
-            src="/drive-front-page-range.png"
-            alt="Drive automotive marketplace"
-            width={1200}
-            height={600}
-            className="w-full h-auto object-cover"
-            priority
-          />
+    <main className="min-h-screen bg-black text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Hero Image - different images for mobile vs desktop */}
+        <div className="mb-12 overflow-hidden shadow-xl">
+          {/* Mobile Image */}
+          <div className="block md:hidden">
+            <Image
+              src="/drive-range.png"
+              alt="Drive automotive marketplace"
+              width={800}
+              height={600}
+              className="w-full h-auto object-cover"
+              priority
+            />
+          </div>
+          {/* Desktop Image */}
+          <div className="hidden md:block rounded-lg overflow-hidden">
+            <Image
+              src="/drive-front-page-range.png"
+              alt="Drive automotive marketplace"
+              width={1200}
+              height={600}
+              className="w-full h-auto object-cover"
+              priority
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
