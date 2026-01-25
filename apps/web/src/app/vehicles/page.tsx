@@ -30,21 +30,63 @@ interface Vehicle {
   }
 }
 
+interface Filters {
+  make: string
+  model: string
+  minPrice: string
+  maxPrice: string
+  minYear: string
+  maxYear: string
+  condition: string
+  fuelType: string
+  transmission: string
+  location: string
+}
+
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [showFilters, setShowFilters] = useState(false)
+
+  const [filters, setFilters] = useState<Filters>({
+    make: '',
+    model: '',
+    minPrice: '',
+    maxPrice: '',
+    minYear: '',
+    maxYear: '',
+    condition: '',
+    fuelType: '',
+    transmission: '',
+    location: '',
+  })
 
   useEffect(() => {
     fetchVehicles()
-  }, [page])
+  }, [page, filters])
 
   const fetchVehicles = async () => {
     try {
       setLoading(true)
-      const response = await apiClient.get(`/api/v1/vehicles?page=${page}&limit=12`)
+
+      // Build query params
+      const params = new URLSearchParams({ page: page.toString(), limit: '12' })
+
+      if (filters.make) params.append('make', filters.make)
+      if (filters.model) params.append('model', filters.model)
+      if (filters.minPrice) params.append('minPrice', filters.minPrice)
+      if (filters.maxPrice) params.append('maxPrice', filters.maxPrice)
+      if (filters.minYear) params.append('minYear', filters.minYear)
+      if (filters.maxYear) params.append('maxYear', filters.maxYear)
+      if (filters.condition) params.append('condition', filters.condition)
+      if (filters.fuelType) params.append('fuelType', filters.fuelType)
+      if (filters.transmission) params.append('transmission', filters.transmission)
+      if (filters.location) params.append('location', filters.location)
+
+      const response = await apiClient.get(`/api/v1/vehicles?${params.toString()}`)
 
       if (response.data.status === 'success') {
         setVehicles(response.data.data.vehicles)
@@ -56,6 +98,27 @@ export default function VehiclesPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleFilterChange = (key: keyof Filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+    setPage(1) // Reset to first page when filters change
+  }
+
+  const clearFilters = () => {
+    setFilters({
+      make: '',
+      model: '',
+      minPrice: '',
+      maxPrice: '',
+      minYear: '',
+      maxYear: '',
+      condition: '',
+      fuelType: '',
+      transmission: '',
+      location: '',
+    })
+    setPage(1)
   }
 
   if (loading && page === 1) {
@@ -73,9 +136,19 @@ export default function VehiclesPage() {
   return (
     <main className="min-h-screen bg-black text-white py-12 px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Browse Vehicles</h1>
-          <p className="text-gray-400">Discover your next vehicle</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Browse Vehicles</h1>
+            <p className="text-gray-400">Discover your next vehicle</p>
+          </div>
+
+          {/* Mobile Filter Toggle */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="md:hidden bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition-colors"
+          >
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
         </div>
 
         {error && (
@@ -84,7 +157,153 @@ export default function VehiclesPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Filters Sidebar */}
+          <aside className={`${showFilters ? 'block' : 'hidden'} md:block w-full md:w-64 flex-shrink-0`}>
+            <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 sticky top-4">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Filters</h2>
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-blue-500 hover:text-blue-400"
+                >
+                  Clear All
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Make */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Make</label>
+                  <input
+                    type="text"
+                    value={filters.make}
+                    onChange={(e) => handleFilterChange('make', e.target.value)}
+                    placeholder="e.g., Toyota"
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {/* Model */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Model</label>
+                  <input
+                    type="text"
+                    value={filters.model}
+                    onChange={(e) => handleFilterChange('model', e.target.value)}
+                    placeholder="e.g., Camry"
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {/* Price Range */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Price Range</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      value={filters.minPrice}
+                      onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                      placeholder="Min"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="number"
+                      value={filters.maxPrice}
+                      onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                      placeholder="Max"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Year Range */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Year Range</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      value={filters.minYear}
+                      onChange={(e) => handleFilterChange('minYear', e.target.value)}
+                      placeholder="Min"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="number"
+                      value={filters.maxYear}
+                      onChange={(e) => handleFilterChange('maxYear', e.target.value)}
+                      placeholder="Max"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Condition */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Condition</label>
+                  <select
+                    value={filters.condition}
+                    onChange={(e) => handleFilterChange('condition', e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  >
+                    <option value="">All</option>
+                    <option value="NEW">New</option>
+                    <option value="USED">Used</option>
+                    <option value="CERTIFIED_PRE_OWNED">Certified Pre-Owned</option>
+                  </select>
+                </div>
+
+                {/* Fuel Type */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Fuel Type</label>
+                  <select
+                    value={filters.fuelType}
+                    onChange={(e) => handleFilterChange('fuelType', e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  >
+                    <option value="">All</option>
+                    <option value="PETROL">Petrol</option>
+                    <option value="DIESEL">Diesel</option>
+                    <option value="ELECTRIC">Electric</option>
+                    <option value="HYBRID">Hybrid</option>
+                    <option value="PLUG_IN_HYBRID">Plug-in Hybrid</option>
+                  </select>
+                </div>
+
+                {/* Transmission */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Transmission</label>
+                  <select
+                    value={filters.transmission}
+                    onChange={(e) => handleFilterChange('transmission', e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  >
+                    <option value="">All</option>
+                    <option value="AUTOMATIC">Automatic</option>
+                    <option value="MANUAL">Manual</option>
+                    <option value="CVT">CVT</option>
+                    <option value="SEMI_AUTOMATIC">Semi-Automatic</option>
+                  </select>
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Location</label>
+                  <input
+                    type="text"
+                    value={filters.location}
+                    onChange={(e) => handleFilterChange('location', e.target.value)}
+                    placeholder="City or State"
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Vehicles Grid */}
+          <div className="flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {vehicles.map((vehicle) => (
             <Link
               key={vehicle.id}
@@ -144,36 +363,39 @@ export default function VehiclesPage() {
           ))}
         </div>
 
-        {vehicles.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <p className="text-xl text-gray-400">No vehicles found</p>
+            {vehicles.length === 0 && !loading && (
+              <div className="text-center py-12">
+                <p className="text-xl text-gray-400">No vehicles found</p>
+              </div>
+            )}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center items-center gap-4">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed rounded transition-colors"
+                >
+                  Previous
+                </button>
+
+                <span className="text-gray-400">
+                  Page {page} of {totalPages}
+                </span>
+
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed rounded transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-8 flex justify-center items-center gap-4">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed rounded transition-colors"
-            >
-              Previous
-            </button>
-
-            <span className="text-gray-400">
-              Page {page} of {totalPages}
-            </span>
-
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed rounded transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        )}
+        </div>
       </div>
     </main>
   )
