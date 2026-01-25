@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import apiClient from '@/lib/api/client'
 import { formatCurrency, formatMileage } from '@drive/shared'
@@ -65,15 +65,24 @@ export default function VehiclesPage() {
   })
 
   const [appliedFilters, setAppliedFilters] = useState<Filters>(filters)
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
   // Debounce filter changes
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
+    }
+
+    debounceTimer.current = setTimeout(() => {
       setAppliedFilters(filters)
       setPage(1) // Reset to page 1 when filters change
-    }, 500) // Wait 500ms after user stops typing
+    }, 800) // Wait 800ms after user stops typing
 
-    return () => clearTimeout(timer)
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+      }
+    }
   }, [filters])
 
   useEffect(() => {
@@ -112,11 +121,11 @@ export default function VehiclesPage() {
     }
   }
 
-  const handleFilterChange = (key: keyof Filters, value: string) => {
+  const handleFilterChange = useCallback((key: keyof Filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
-  }
+  }, [])
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     const emptyFilters = {
       make: '',
       model: '',
@@ -132,7 +141,7 @@ export default function VehiclesPage() {
     setFilters(emptyFilters)
     setAppliedFilters(emptyFilters)
     setPage(1)
-  }
+  }, [])
 
   if (loading && page === 1) {
     return (
