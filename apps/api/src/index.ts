@@ -16,6 +16,7 @@ import transactionRoutes from './routes/transaction.routes'
 import financeRoutes from './routes/finance.routes'
 import messageRoutes from './routes/message.routes'
 import uploadRoutes from './routes/upload.routes'
+import subscriptionRoutes from './routes/subscription.routes'
 
 dotenv.config()
 
@@ -29,7 +30,10 @@ app.use(cors({
   credentials: true,
 }))
 app.use(compression())
-app.use(express.json())
+// Save raw body for Stripe webhook signature verification
+app.use(express.json({
+  verify: (req: any, _res, buf) => { req.rawBody = buf },
+}))
 app.use(express.urlencoded({ extended: true }))
 app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }))
 
@@ -46,6 +50,7 @@ app.use('/api/v1/transactions', transactionRoutes)
 app.use('/api/v1/finance', financeRoutes)
 app.use('/api/v1/messages', messageRoutes)
 app.use('/api/v1/upload', uploadRoutes)
+app.use('/api/v1/subscriptions', subscriptionRoutes)
 
 // Error handlers
 app.use(notFoundHandler)

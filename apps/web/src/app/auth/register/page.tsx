@@ -53,8 +53,9 @@ export default function RegisterPage() {
         localStorage.setItem('refreshToken', response.data.data.tokens.refreshToken)
         localStorage.setItem('user', JSON.stringify(response.data.data.user))
 
-        // Redirect to home with hard refresh
-        window.location.href = '/'
+        // Dealers go to subscription setup; everyone else goes home
+        window.location.href =
+          response.data.data.user.role === 'DEALER' ? '/subscription' : '/'
       }
     } catch (err: any) {
       setError(

@@ -9,6 +9,7 @@ interface User {
   firstName: string
   lastName: string
   role: string
+  dealershipName?: string
 }
 
 interface AuthContextType {

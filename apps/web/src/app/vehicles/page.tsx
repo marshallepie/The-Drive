@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import apiClient from '@/lib/api/client'
 import { formatCurrency, formatMileage } from '@drive/shared'
 
@@ -44,6 +45,8 @@ interface Filters {
 }
 
 export default function VehiclesPage() {
+  const searchParams = useSearchParams()
+
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -52,16 +55,16 @@ export default function VehiclesPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   const [filters, setFilters] = useState<Filters>({
-    make: '',
-    model: '',
-    minPrice: '',
-    maxPrice: '',
-    minYear: '',
-    maxYear: '',
-    condition: '',
-    fuelType: '',
-    transmission: '',
-    location: '',
+    make:         searchParams.get('make')         ?? '',
+    model:        searchParams.get('model')        ?? '',
+    minPrice:     searchParams.get('minPrice')     ?? '',
+    maxPrice:     searchParams.get('maxPrice')     ?? '',
+    minYear:      searchParams.get('minYear')      ?? '',
+    maxYear:      searchParams.get('maxYear')      ?? '',
+    condition:    searchParams.get('condition')    ?? '',
+    fuelType:     searchParams.get('fuelType')     ?? '',
+    transmission: searchParams.get('transmission') ?? '',
+    location:     searchParams.get('location')     ?? '',
   })
 
   const [appliedFilters, setAppliedFilters] = useState<Filters>(filters)

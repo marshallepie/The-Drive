@@ -22,6 +22,14 @@ export default function Navbar() {
                 List Vehicle
               </Link>
             )}
+            {isAuthenticated && user?.role === 'DEALER' && (
+              <Link
+                href="/dashboard"
+                className="hidden sm:block text-gray-300 hover:text-white transition-colors"
+              >
+                Dashboard
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
