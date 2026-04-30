@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import apiClient from '@/lib/api/client'
@@ -44,7 +44,7 @@ interface Filters {
   location: string
 }
 
-export default function VehiclesPage() {
+function VehiclesContent() {
   const searchParams = useSearchParams()
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -422,5 +422,17 @@ export default function VehiclesPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function VehiclesPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-black text-white py-12 px-8 flex items-center justify-center">
+        <p className="text-xl text-gray-400">Loading vehicles...</p>
+      </main>
+    }>
+      <VehiclesContent />
+    </Suspense>
   )
 }
