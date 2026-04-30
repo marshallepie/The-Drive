@@ -30,7 +30,6 @@ interface Vehicle {
 }
 
 const SUBSCRIPTION_AMOUNT = 600
-const REBATE_PER_SALE = 100
 const SALES_TO_COVER = 6
 
 function SubscriptionWidget({ sub }: { sub: Subscription | null }) {
