@@ -41,7 +41,7 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Hero Image with Search Overlay */}
-        <div className="mb-8 shadow-xl relative overflow-hidden">
+        <div className="mb-8 shadow-xl relative overflow-hidden group">
 
           {/* Mobile Image */}
           <div className="block md:hidden">
@@ -67,8 +67,8 @@ export default function Home() {
             />
           </div>
 
-          {/* Search Overlay — top-left quadrant, half width */}
-          <div className="absolute top-4 left-4 md:top-6 md:left-6 w-1/2 bg-black/55 backdrop-blur-md rounded-lg px-4 py-5 md:px-6 md:py-6">
+          {/* Search Overlay — always visible on mobile, fold-away on large screens until hero is hovered */}
+          <div className="absolute top-4 left-4 lg:left-auto lg:right-6 lg:top-6 w-1/2 bg-black/55 backdrop-blur-md rounded-lg px-4 py-5 md:px-6 md:py-6 lg:opacity-0 lg:-translate-y-2 lg:pointer-events-none lg:group-hover:opacity-100 lg:group-hover:translate-y-0 lg:group-hover:pointer-events-auto transition-all duration-300 ease-out">
             <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">
               Find your vehicle
             </p>
