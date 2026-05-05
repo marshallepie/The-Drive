@@ -4,12 +4,12 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://thedrive.co'
 const FROM = process.env.SMTP_FROM || 'The Drive <noreply@thedrive.co>'
 
 function getTransporter() {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) return null
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) return null
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || '587'),
     secure: process.env.SMTP_SECURE === 'true',
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
   })
 }
 
