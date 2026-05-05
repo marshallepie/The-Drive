@@ -29,6 +29,19 @@ interface Vehicle {
   location: { city: string; state: string }
 }
 
+interface TxSummary {
+  id: string
+  status: string
+  amount: string
+  currency: string
+  make: string
+  model: string
+  year: number
+  images: string[]
+  role: 'buyer' | 'seller'
+  created_at: string
+}
+
 const SUBSCRIPTION_AMOUNT = 600
 const SALES_TO_COVER = 6
 
@@ -139,6 +152,7 @@ export default function DashboardPage() {
 
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [transactions, setTransactions] = useState<TxSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -148,9 +162,11 @@ export default function DashboardPage() {
     Promise.all([
       apiClient.get('/api/v1/subscriptions/status').catch(() => null),
       apiClient.get('/api/v1/users/listings').catch(() => null),
-    ]).then(([subRes, listingsRes]) => {
+      apiClient.get('/api/v1/transactions').catch(() => null),
+    ]).then(([subRes, listingsRes, txRes]) => {
       if (subRes?.data?.data?.subscription) setSubscription(subRes.data.data.subscription)
       if (listingsRes?.data?.data?.vehicles) setVehicles(listingsRes.data.data.vehicles)
+      if (txRes?.data?.data?.transactions) setTransactions(txRes.data.data.transactions)
     }).finally(() => setLoading(false))
   }, [isAuthenticated, user, router])
 
@@ -280,6 +296,46 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Transactions */}
+        {transactions.length > 0 && (
+          <div className="mt-10">
+            <h2 className="text-xl font-semibold mb-4">
+              Recent Transactions
+              <span className="ml-2 text-sm text-gray-400 font-normal">({transactions.length})</span>
+            </h2>
+            <div className="flex flex-col gap-3">
+              {transactions.slice(0, 10).map((tx) => (
+                <Link
+                  key={tx.id}
+                  href={`/transactions/${tx.id}`}
+                  className="bg-gray-900 border border-gray-800 hover:border-gray-600 rounded-xl px-5 py-4 flex items-center gap-4 transition-colors"
+                >
+                  {tx.images?.[0] ? (
+                    <img src={tx.images[0]} alt="" className="w-16 h-10 object-cover rounded-lg flex-shrink-0" />
+                  ) : (
+                    <div className="w-16 h-10 bg-gray-800 rounded-lg flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">{tx.year} {tx.make} {tx.model}</p>
+                    <p className="text-blue-400 font-bold text-sm">{formatCurrency(parseFloat(tx.amount), tx.currency)}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      tx.status === 'COMPLETED' ? 'bg-green-500/15 text-green-400' :
+                      tx.status === 'ESCROWED'  ? 'bg-blue-500/15 text-blue-400' :
+                      tx.status === 'INITIATED' ? 'bg-yellow-500/15 text-yellow-400' :
+                      'bg-gray-700 text-gray-400'
+                    }`}>
+                      {tx.status}
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1 capitalize">{tx.role}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   )

@@ -52,6 +52,7 @@ export default function VehicleDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [contactLoading, setContactLoading] = useState(false)
+  const [buyLoading, setBuyLoading] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -78,6 +79,25 @@ export default function VehicleDetailPage() {
       console.error(err)
     } finally {
       setContactLoading(false)
+    }
+  }
+
+  const handleBuyNow = async () => {
+    if (!isAuthenticated) { router.push('/auth/login'); return }
+    if (!vehicle) return
+    setBuyLoading(true)
+    try {
+      const res = await apiClient.post('/api/v1/transactions/initiate', { vehicleId: vehicle.id })
+      if (res.data.status === 'success') {
+        const { transactionId, clientSecret, testMode } = res.data.data
+        if (clientSecret) sessionStorage.setItem(`tx_secret_${transactionId}`, clientSecret)
+        if (testMode) sessionStorage.setItem(`tx_test_${transactionId}`, '1')
+        router.push(`/transactions/${transactionId}`)
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to initiate purchase')
+    } finally {
+      setBuyLoading(false)
     }
   }
 
@@ -264,8 +284,12 @@ export default function VehicleDetailPage() {
                 {contactLoading ? 'Opening chat…' : 'Contact Seller'}
               </button>
 
-              <button className="w-full bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded transition-colors">
-                Make an Offer
+              <button
+                onClick={handleBuyNow}
+                disabled={buyLoading || vehicle.seller.id === user?.id || vehicle.status !== 'LIVE'}
+                className="w-full bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded transition-colors"
+              >
+                {buyLoading ? 'Opening…' : 'Buy Now'}
               </button>
 
               <div className="mt-6 pt-6 border-t border-gray-800 text-sm text-gray-400">
