@@ -1,10 +1,29 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import apiClient from '@/lib/api/client'
 
 export default function Navbar() {
   const { user, logout, isAuthenticated } = useAuth()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (!isAuthenticated) { setUnreadCount(0); return }
+
+    const fetchUnread = () => {
+      apiClient.get('/api/v1/messages/unread-count')
+        .then((res) => {
+          if (res.data.status === 'success') setUnreadCount(res.data.data.count)
+        })
+        .catch(() => {})
+    }
+
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated])
 
   return (
     <nav className="bg-gray-900 border-b border-gray-800">
@@ -28,6 +47,19 @@ export default function Navbar() {
                 className="hidden sm:block text-gray-300 hover:text-white transition-colors"
               >
                 Dashboard
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                href="/messages"
+                className="hidden sm:flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors"
+              >
+                Messages
+                {unreadCount > 0 && (
+                  <span className="bg-blue-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center leading-none">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
             )}
           </div>

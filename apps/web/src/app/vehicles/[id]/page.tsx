@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import apiClient from '@/lib/api/client'
+import { useAuth } from '@/contexts/AuthContext'
 import { formatCurrency, formatMileage, formatDate } from '@drive/shared'
 
 interface Vehicle {
@@ -45,15 +46,40 @@ interface Vehicle {
 
 export default function VehicleDetailPage() {
   const params = useParams()
+  const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [contactLoading, setContactLoading] = useState(false)
 
   useEffect(() => {
     if (params.id) {
       fetchVehicle()
     }
   }, [params.id])
+
+  const handleContactSeller = async () => {
+    if (!isAuthenticated) {
+      router.push('/auth/login')
+      return
+    }
+    if (!vehicle) return
+    setContactLoading(true)
+    try {
+      const res = await apiClient.post('/api/v1/messages/conversations', {
+        otherUserId: vehicle.seller.id,
+        vehicleId: vehicle.id,
+      })
+      if (res.data.status === 'success') {
+        router.push(`/messages/${res.data.data.conversationId}`)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setContactLoading(false)
+    }
+  }
 
   const fetchVehicle = async () => {
     try {
@@ -230,8 +256,12 @@ export default function VehicleDetailPage() {
                 </div>
               )}
 
-              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded transition-colors mb-2">
-                Contact Seller
+              <button
+                onClick={handleContactSeller}
+                disabled={contactLoading || vehicle.seller.id === user?.id}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded transition-colors mb-2"
+              >
+                {contactLoading ? 'Opening chat…' : 'Contact Seller'}
               </button>
 
               <button className="w-full bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded transition-colors">
