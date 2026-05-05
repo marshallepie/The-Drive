@@ -1,5 +1,6 @@
 import Stripe from 'stripe'
 import { pool } from '../db/config'
+import { EmailService } from './email.service'
 
 const SUBSCRIPTION_AMOUNT_GBP = 600.00
 const REBATE_PER_SALE_GBP     = 100.00
@@ -100,7 +101,6 @@ export class SubscriptionService {
   }
 
   static async activateFromWebhook(sessionId: string, paymentIntentId: string) {
-    // Find the dealer from the pending record
     const result = await pool.query(
       `SELECT dealer_id FROM dealer_subscriptions
        WHERE stripe_checkout_session_id = $1`,
@@ -108,15 +108,24 @@ export class SubscriptionService {
     )
     if (result.rows.length === 0) return
 
-    await this.activateSubscription(
-      result.rows[0].dealer_id,
-      sessionId,
-      paymentIntentId
-    )
+    const dealerId = result.rows[0].dealer_id
+    await this.activateSubscription(dealerId, sessionId, paymentIntentId)
+    await this.sendActivationEmail(dealerId)
   }
 
   static async activateManually(dealerId: string) {
     await this.activateSubscription(dealerId, null, null)
+    await this.sendActivationEmail(dealerId)
+  }
+
+  private static async sendActivationEmail(dealerId: string) {
+    const res = await pool.query(
+      `SELECT email, first_name, dealership_name FROM users WHERE id = $1`,
+      [dealerId]
+    )
+    if (res.rows.length === 0) return
+    const { email, first_name, dealership_name } = res.rows[0]
+    EmailService.sendSubscriptionActivated(email, first_name, dealership_name || undefined).catch(() => {})
   }
 
   // Called when a vehicle sale completes via escrow — credits £100 rebate

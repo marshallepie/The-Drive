@@ -1,4 +1,5 @@
 import { pool } from '../db/config'
+import { EmailService } from './email.service'
 
 export class MessageService {
 
@@ -135,6 +136,33 @@ export class MessageService {
        RETURNING id, conversation_id, sender_id, content, status, created_at`,
       [conversationId, senderId, content]
     )
+
+    // Email the recipient — fetch conversation details for context
+    pool.query(
+      `SELECT c.vehicle_id, c.participant_ids,
+              v.make, v.model, v.year,
+              sender.first_name AS sender_first, sender.last_name AS sender_last,
+              recipient.email AS recipient_email,
+              recipient.first_name AS recipient_first, recipient.last_name AS recipient_last,
+              recipient.dealership_name AS recipient_dealership
+       FROM conversations c
+       LEFT JOIN vehicles v ON v.id = c.vehicle_id
+       JOIN users sender ON sender.id = $2
+       JOIN users recipient ON recipient.id = (
+         SELECT pid FROM unnest(c.participant_ids) AS pid WHERE pid != $2 LIMIT 1
+       )
+       WHERE c.id = $1`,
+      [conversationId, senderId]
+    ).then((ctx) => {
+      if (ctx.rows.length === 0) return
+      const r = ctx.rows[0]
+      const senderName = `${r.sender_first} ${r.sender_last}`
+      const recipientName = r.recipient_dealership || `${r.recipient_first} ${r.recipient_last}`
+      const vehicleTitle = r.make ? `${r.year} ${r.make} ${r.model}` : null
+      EmailService.sendNewMessage(
+        r.recipient_email, recipientName, senderName, vehicleTitle, conversationId
+      ).catch(() => {})
+    }).catch(() => {})
 
     // Bump conversation updated_at
     await pool.query(

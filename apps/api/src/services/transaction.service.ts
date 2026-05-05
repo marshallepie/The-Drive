@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
 import { pool } from '../db/config'
 import { SubscriptionService } from './subscription.service'
+import { EmailService } from './email.service'
 
 export class TransactionService {
 
@@ -10,10 +11,11 @@ export class TransactionService {
   }
 
   static async initiate(buyerId: string, vehicleId: string, frontendUrl: string) {
-    // Load vehicle and seller
+    // Load vehicle, seller, and buyer
     const vehicleRes = await pool.query(
       `SELECT v.id, v.make, v.model, v.year, v.price, v.currency, v.status, v.seller_id,
-              u.email AS seller_email
+              u.email AS seller_email, u.first_name AS seller_first_name, u.last_name AS seller_last_name,
+              u.dealership_name AS seller_dealership_name
        FROM vehicles v
        JOIN users u ON u.id = v.seller_id
        WHERE v.id = $1`,
@@ -69,6 +71,24 @@ export class TransactionService {
       vehicleId, amount: vehicle.price, currency: vehicle.currency,
     })
 
+    // Notify seller
+    const buyerRes = await pool.query(
+      `SELECT first_name, last_name FROM users WHERE id = $1`, [buyerId]
+    )
+    const buyer = buyerRes.rows[0]
+    if (buyer) {
+      const sellerName = vehicle.seller_dealership_name ||
+        `${vehicle.seller_first_name} ${vehicle.seller_last_name}`
+      const buyerName = `${buyer.first_name} ${buyer.last_name}`
+      const formattedAmount = new Intl.NumberFormat('en-GB', {
+        style: 'currency', currency: vehicle.currency,
+      }).format(parseFloat(vehicle.price))
+      EmailService.sendTransactionInitiated(
+        vehicle.seller_email, sellerName, buyerName,
+        vehicle.year, vehicle.make, vehicle.model, formattedAmount, transactionId
+      ).catch(() => {})
+    }
+
     return { transactionId, clientSecret, testMode, frontendUrl }
   }
 
@@ -113,6 +133,28 @@ export class TransactionService {
     if (res.rows.length === 0) return
     const tx = res.rows[0]
     await this.auditLog(tx.buyer_id, 'transactions', tx.id, 'ESCROWED', { paymentIntentId })
+
+    // Send escrow notifications
+    const peopleRes = await pool.query(
+      `SELECT u.id, u.email, u.first_name, u.last_name, u.dealership_name,
+              v.make, v.model, v.year
+       FROM users u, vehicles v
+       WHERE u.id IN ($1, $2) AND v.id = $3`,
+      [tx.buyer_id, tx.seller_id, tx.vehicle_id]
+    )
+    const buyer = peopleRes.rows.find((r: any) => r.id === tx.buyer_id)
+    const seller = peopleRes.rows.find((r: any) => r.id === tx.seller_id)
+    const vehicle = peopleRes.rows[0]
+    if (buyer && seller && vehicle) {
+      const amount = new Intl.NumberFormat('en-GB', {
+        style: 'currency', currency: tx.currency,
+      }).format(parseFloat(tx.amount))
+      EmailService.sendTransactionEscrowed(
+        buyer.email, `${buyer.first_name} ${buyer.last_name}`,
+        seller.email, seller.dealership_name || `${seller.first_name} ${seller.last_name}`,
+        vehicle.year, vehicle.make, vehicle.model, amount, tx.id
+      ).catch(() => {})
+    }
   }
 
   static async confirmReceipt(transactionId: string, buyerId: string) {
@@ -151,6 +193,16 @@ export class TransactionService {
     await this.auditLog(buyerId, 'transactions', transactionId, 'COMPLETED', {
       vehicleId: tx.vehicle_id,
     })
+
+    // Send completion emails
+    const amount = new Intl.NumberFormat('en-GB', {
+      style: 'currency', currency: tx.currency,
+    }).format(parseFloat(tx.amount))
+    EmailService.sendTransactionCompleted(
+      tx.buyer_email, `${tx.buyer_first_name} ${tx.buyer_last_name}`,
+      tx.seller_email, tx.seller_dealership_name || `${tx.seller_first_name} ${tx.seller_last_name}`,
+      tx.year, tx.make, tx.model, amount, transactionId
+    ).catch(() => {})
   }
 
   static async cancelTransaction(transactionId: string, userId: string) {
@@ -173,6 +225,20 @@ export class TransactionService {
     )
 
     await this.auditLog(userId, 'transactions', transactionId, newStatus, {})
+
+    // Notify both parties
+    const amount = new Intl.NumberFormat('en-GB', {
+      style: 'currency', currency: tx.currency,
+    }).format(parseFloat(tx.amount))
+    const isRefunded = newStatus === 'REFUNDED'
+    EmailService.sendTransactionCancelled(
+      tx.buyer_email, `${tx.buyer_first_name} ${tx.buyer_last_name}`,
+      tx.year, tx.make, tx.model, isRefunded, transactionId
+    ).catch(() => {})
+    EmailService.sendTransactionCancelled(
+      tx.seller_email, tx.seller_dealership_name || `${tx.seller_first_name} ${tx.seller_last_name}`,
+      tx.year, tx.make, tx.model, false, transactionId
+    ).catch(() => {})
   }
 
   private static async auditLog(

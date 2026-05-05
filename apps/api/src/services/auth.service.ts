@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { pool } from '../db/config'
 import { UserRole } from '../types'
+import { EmailService } from './email.service'
 
 const SALT_ROUNDS = 10
 
@@ -51,6 +52,9 @@ export class AuthService {
 
     // Generate tokens
     const tokens = this.generateTokens(user)
+
+    // Send welcome email (fire-and-forget)
+    EmailService.sendWelcome(user.email, user.first_name).catch(() => {})
 
     return {
       user: this.sanitizeUser(user),
