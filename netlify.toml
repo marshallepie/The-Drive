@@ -7,7 +7,7 @@
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
-  NEXT_PUBLIC_API_URL = "https://the-drive-api.onrender.com"
+  NEXT_PUBLIC_API_URL = "https://the-drive-api-kd0n.onrender.com"
 
 # Redirect all requests to Next.js
 [[redirects]]
