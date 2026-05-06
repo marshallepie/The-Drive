@@ -23,7 +23,7 @@ export const registerSchema = Joi.object({
   role: Joi.string()
     .valid(...Object.values(UserRole))
     .default('PUBLIC'),
-  phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional().messages({
+  phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional().allow('').messages({
     'string.pattern.base': 'Please provide a valid phone number',
   }),
 })
