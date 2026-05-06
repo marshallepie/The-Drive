@@ -10,6 +10,106 @@ import {
 
 const router = Router()
 
+// Fuel type mapping from DVLA values to our enum
+function mapFuelType(dvlaFuel: string): string {
+  const f = dvlaFuel?.toUpperCase() || ''
+  if (f.includes('ELECTRIC') && f.includes('PLUG')) return 'PLUG_IN_HYBRID'
+  if (f.includes('ELECTRIC') && (f.includes('HYBRID') || f.includes('BI'))) return 'HYBRID'
+  if (f === 'ELECTRIC') return 'ELECTRIC'
+  if (f.includes('DIESEL')) return 'DIESEL'
+  if (f.includes('PETROL') || f.includes('GASOLINE') || f.includes('GAS')) return 'PETROL'
+  if (f.includes('HYBRID')) return 'HYBRID'
+  return 'PETROL'
+}
+
+function formatEngineSize(cc: number): string {
+  if (!cc || cc === 0) return ''
+  const litres = (cc / 1000).toFixed(1)
+  return `${litres}L`
+}
+
+/**
+ * POST /api/v1/vehicles/lookup
+ * Look up vehicle details from DVLA by registration plate
+ */
+router.post('/lookup', authenticate, async (req: Request, res: Response) => {
+  const rawPlate = (req.body.registrationNumber || '').toString().toUpperCase().replace(/\s/g, '')
+
+  if (!rawPlate || rawPlate.length < 2 || rawPlate.length > 8) {
+    return res.status(400).json({ status: 'error', message: 'Invalid registration number' })
+  }
+
+  const apiKey = process.env.DVLA_API_KEY
+  const testMode = !apiKey
+
+  if (testMode) {
+    // Return sample data so the UI works without a DVLA key
+    return res.json({
+      status: 'success',
+      testMode: true,
+      data: {
+        registrationNumber: rawPlate,
+        make: 'VOLKSWAGEN',
+        yearOfManufacture: 2019,
+        fuelType: 'DIESEL',
+        mappedFuelType: 'DIESEL',
+        colour: 'BLACK',
+        engineCapacity: 1968,
+        engineSize: '2.0L',
+        motStatus: 'Valid',
+        motExpiryDate: '2025-10-15',
+        taxStatus: 'Taxed',
+        taxDueDate: '2025-12-01',
+        co2Emissions: 118,
+      },
+    })
+  }
+
+  try {
+    const response = await fetch('https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ registrationNumber: rawPlate }),
+    })
+
+    if (response.status === 404) {
+      return res.status(404).json({ status: 'error', message: 'Vehicle not found — check the registration number' })
+    }
+    if (!response.ok) {
+      return res.status(502).json({ status: 'error', message: 'DVLA lookup failed — please enter details manually' })
+    }
+
+    const dvla = await response.json() as any
+
+    return res.json({
+      status: 'success',
+      testMode: false,
+      data: {
+        registrationNumber: dvla.registrationNumber,
+        make: dvla.make ? (dvla.make.charAt(0).toUpperCase() + dvla.make.slice(1).toLowerCase()) : '',
+        yearOfManufacture: dvla.yearOfManufacture || null,
+        fuelType: dvla.fuelType || '',
+        mappedFuelType: mapFuelType(dvla.fuelType || ''),
+        colour: dvla.colour ? (dvla.colour.charAt(0).toUpperCase() + dvla.colour.slice(1).toLowerCase()) : '',
+        engineCapacity: dvla.engineCapacity || 0,
+        engineSize: formatEngineSize(dvla.engineCapacity || 0),
+        motStatus: dvla.motStatus || null,
+        motExpiryDate: dvla.motExpiryDate || null,
+        taxStatus: dvla.taxStatus || null,
+        taxDueDate: dvla.taxDueDate || null,
+        co2Emissions: dvla.co2Emissions || null,
+        euroStatus: dvla.euroStatus || null,
+      },
+    })
+  } catch (err) {
+    console.error('DVLA lookup error:', err)
+    return res.status(502).json({ status: 'error', message: 'DVLA lookup failed — please enter details manually' })
+  }
+})
+
 /**
  * GET /api/v1/vehicles
  * Get all vehicles with optional filters
