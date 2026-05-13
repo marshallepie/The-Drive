@@ -17,6 +17,7 @@ import financeRoutes from './routes/finance.routes'
 import messageRoutes from './routes/message.routes'
 import uploadRoutes from './routes/upload.routes'
 import subscriptionRoutes from './routes/subscription.routes'
+import importRoutes from './routes/import.routes'
 
 dotenv.config()
 
@@ -51,6 +52,7 @@ app.use('/api/v1/finance', financeRoutes)
 app.use('/api/v1/messages', messageRoutes)
 app.use('/api/v1/upload', uploadRoutes)
 app.use('/api/v1/subscriptions', subscriptionRoutes)
+app.use('/api/v1/import', importRoutes)
 
 // Error handlers
 app.use(notFoundHandler)

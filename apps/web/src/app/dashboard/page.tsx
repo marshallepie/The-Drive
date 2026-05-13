@@ -223,6 +223,12 @@ export default function DashboardPage() {
             + List a Vehicle
           </Link>
           <Link
+            href="/vehicles/import"
+            className="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors text-sm"
+          >
+            Import Stock
+          </Link>
+          <Link
             href="/vehicles"
             className="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors text-sm"
           >
