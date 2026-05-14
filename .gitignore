@@ -50,3 +50,6 @@ contracts/typechain-types/
 # Temporary files
 tmp/
 temp/
+
+# Local Netlify folder
+.netlify

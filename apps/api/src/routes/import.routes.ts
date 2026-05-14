@@ -21,8 +21,8 @@ const confirmSchema = Joi.object({
     Joi.object({
       make: Joi.string().required(),
       model: Joi.string().allow(null, '').default(''),
-      year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 2)
-        .allow(null).default(new Date().getFullYear()),
+      year: Joi.number().integer().min(0).max(new Date().getFullYear() + 2)
+        .allow(null).default(0),
       price: Joi.number().min(0).allow(null).default(0).unsafe(),
       currency: Joi.string().allow(null, '').default('GBP'),
       mileage: Joi.number().min(0).allow(null).default(0),
@@ -121,7 +121,7 @@ router.post('/confirm', authenticate, validate(confirmSchema), async (req: AuthR
          RETURNING id`,
         [
           sellerId,
-          v.make, v.model || '', v.year || new Date().getFullYear(),
+          v.make, v.model || '', v.year || 0,
           placeholderVin,
           v.price || 0, v.currency || 'GBP',
           v.mileage || 0,

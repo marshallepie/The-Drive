@@ -197,6 +197,34 @@ function parseYear(raw: string | number): number | null {
   return n
 }
 
+// Find the first plausible car year in any text string
+function extractYearFromText(text: string): number | null {
+  const m = text.match(/\b(19[5-9]\d|20[0-2]\d)\b/)
+  return m ? parseYear(m[1]) : null
+}
+
+// Extract a labelled value from spec tables / definition lists
+function extractSpecValue(el: cheerio.Cheerio<any>, $: cheerio.CheerioAPI, labels: string[]): string | null {
+  let found: string | null = null
+  el.find('tr, .spec-row, [class*="spec-item"], [class*="detail-item"]').each((_, row) => {
+    if (found) return
+    const cells = $(row).find('td, dd, span, div')
+    if (cells.length >= 2) {
+      const key = $(cells.get(0)).text().trim().toLowerCase()
+      if (labels.some(l => key.includes(l))) found = $(cells.get(1)).text().trim()
+    }
+  })
+  el.find('dl').each((_, dl) => {
+    if (found) return
+    $(dl).find('dt').each((_, dt) => {
+      if (found) return
+      const key = $(dt).text().trim().toLowerCase()
+      if (labels.some(l => key.includes(l))) found = $(dt).next('dd').text().trim()
+    })
+  })
+  return found && found.length > 0 && found.length < 200 ? found : null
+}
+
 // ── JSON-LD extractor (schema.org/Car or Product) ────────────────────────────
 function extractJsonLd(html: string, baseUrl = ''): ScrapedVehicle[] {
   const results: ScrapedVehicle[] = []
@@ -338,6 +366,61 @@ function parseMotors(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scra
   return results
 }
 
+// ── Single vehicle listing page parser ───────────────────────────────────────
+function parseSingleVehiclePage(html: string, $: cheerio.CheerioAPI, baseUrl: string): ScrapedVehicle[] {
+  const bodyText = $('body').text()
+  const { price, currency } = parsePrice(bodyText)
+  if (!price) return []
+
+  const title = $('h1').first().text().trim() || $('h2').first().text().trim()
+  if (!title) return []
+
+  const year = extractYearFromText(title) || extractYearFromText(bodyText.substring(0, 3000))
+  const titleClean = year
+    ? title.replace(new RegExp(`\\b${year}\\b`), '').replace(/^[,\s]+|[,\s]+$/g, '').trim()
+    : title
+  const parts = titleClean.split(/[\s,]+/).filter(Boolean)
+  if (!parts[0]) return []
+
+  const make = parts[0]
+  const model = parts.slice(1).join(' ')
+
+  // Use the main content area for targeted extraction
+  const main = $('main, article, [class*="content"], [class*="detail"], [role="main"]').first()
+  const scope = main.length ? main : $('body')
+
+  const mileage = parseMileage(bodyText.match(/([\d,]+)\s*(?:miles|mi)\b/i)?.[1] || '')
+  const fuelRaw = bodyText.match(/petrol|diesel|electric|hybrid/i)?.[0] || ''
+  const transRaw = bodyText.match(/automatic|manual|semi[- ]auto/i)?.[0] || ''
+  const color = extractSpecValue(scope, $, ['colour', 'color', 'exterior colour', 'ext. colour', 'paint'])
+  const engineSize = extractSpecValue(scope, $, ['engine', 'engine size', 'displacement', 'capacity'])
+    || bodyText.match(/(\d+\.?\d*)\s*(?:litre|liter|L)\b/i)?.[0] || null
+
+  // Description: longest text block in main content, excluding navs/footers
+  const descCandidates: string[] = []
+  scope.find('p, [class*="desc"], [class*="summary"]').each((_, el) => {
+    const t = $(el).text().trim()
+    if (t.length > 80 && t.length < 5000) descCandidates.push(t)
+  })
+  const description = descCandidates.sort((a, b) => b.length - a.length)[0] || null
+
+  const images = pickAllImgSrcs(scope, baseUrl)
+
+  return [{
+    make, model, year,
+    price, currency,
+    mileage,
+    fuelType: normaliseFuel(fuelRaw),
+    transmission: normaliseTransmission(transRaw),
+    color,
+    engineSize,
+    description,
+    images,
+    sourceUrl: baseUrl,
+    confidence: 'medium',
+  }]
+}
+
 // ── Generic dealer website parser ────────────────────────────────────────────
 function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): ScrapedVehicle[] {
   // First try JSON-LD
@@ -364,32 +447,56 @@ function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scr
       const card = $(el)
       const heading = card.find('h1,h2,h3,h4').first().text().trim()
       if (!heading) return
-      const parts = heading.split(/\s+/)
-      const year = parseYear(parts[0])
-      const rest = year ? parts.slice(1) : parts
+
+      // Year: search heading first (any position), then fall back to card text
+      const year = extractYearFromText(heading) || extractYearFromText(card.text())
+
+      // Build make/model by removing the year token from the heading
+      const headingClean = year
+        ? heading.replace(new RegExp(`\\b${year}\\b`), '').replace(/^[,\s]+|[,\s]+$/g, '').trim()
+        : heading
+      const parts = headingClean.split(/[\s,]+/).filter(Boolean)
+      if (parts.length < 1) return
+
+      const make = parts[0]
+      const model = parts.slice(1).join(' ')
+
       const { price, currency } = parsePrice(card.text())
       const mileage = parseMileage(card.text().match(/([\d,]+)\s*(miles|mi)/i)?.[1] || '')
       const fuelRaw = card.text().match(/petrol|diesel|electric|hybrid/i)?.[0] || ''
+      const transRaw = card.text().match(/automatic|manual|semi[- ]auto/i)?.[0] || ''
+      const color = extractSpecValue(card, $, ['colour', 'color', 'exterior colour', 'paint'])
+      const engineSize = extractSpecValue(card, $, ['engine', 'engine size', 'capacity'])
+        || card.text().match(/(\d+\.?\d*)\s*(?:litre|liter|L)\b/i)?.[0] || null
+
+      // Description: longest paragraph in the card
+      const descCandidates: string[] = []
+      card.find('p, [class*="desc"], [class*="summary"]').each((_, p) => {
+        const t = $(p).text().trim()
+        if (t.length > 60) descCandidates.push(t)
+      })
+      const description = descCandidates.sort((a, b) => b.length - a.length)[0] || null
+
       const cardImages = pickAllImgSrcs(card, baseUrl)
 
-      if (rest.length < 2) return
       results.push({
-        make: rest[0],
-        model: rest.slice(1).join(' '),
-        year,
+        make, model, year,
         price, currency,
         mileage,
         fuelType: normaliseFuel(fuelRaw),
-        transmission: null,
-        color: null,
-        engineSize: null,
-        description: null,
+        transmission: normaliseTransmission(transRaw),
+        color,
+        engineSize,
+        description,
         images: cardImages,
         sourceUrl: '',
         confidence: 'low',
       })
     } catch { /* skip */ }
   })
+
+  // If the card-based heuristics found nothing, treat the page as a single vehicle listing
+  if (results.length === 0) return parseSingleVehiclePage(html, $, baseUrl)
 
   return results
 }

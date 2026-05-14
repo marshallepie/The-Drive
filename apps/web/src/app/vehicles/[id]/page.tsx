@@ -51,20 +51,21 @@ export default function VehicleDetailPage() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [activeImg, setActiveImg] = useState(0)
   const [contactLoading, setContactLoading] = useState(false)
   const [buyLoading, setBuyLoading] = useState(false)
 
   useEffect(() => {
-    if (params.id) {
-      fetchVehicle()
-    }
+    if (params.id) fetchVehicle()
   }, [params.id])
 
+  // Reset active image when vehicle loads
+  useEffect(() => {
+    setActiveImg(0)
+  }, [vehicle?.id])
+
   const handleContactSeller = async () => {
-    if (!isAuthenticated) {
-      router.push('/auth/login')
-      return
-    }
+    if (!isAuthenticated) { router.push('/auth/login'); return }
     if (!vehicle) return
     setContactLoading(true)
     try {
@@ -72,9 +73,7 @@ export default function VehicleDetailPage() {
         otherUserId: vehicle.seller.id,
         vehicleId: vehicle.id,
       })
-      if (res.data.status === 'success') {
-        router.push(`/messages/${res.data.data.conversationId}`)
-      }
+      if (res.data.status === 'success') router.push(`/messages/${res.data.data.conversationId}`)
     } catch (err) {
       console.error(err)
     } finally {
@@ -105,10 +104,7 @@ export default function VehicleDetailPage() {
     try {
       setLoading(true)
       const response = await apiClient.get(`/api/v1/vehicles/${params.id}`)
-
-      if (response.data.status === 'success') {
-        setVehicle(response.data.data.vehicle)
-      }
+      if (response.data.status === 'success') setVehicle(response.data.data.vehicle)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load vehicle')
     } finally {
@@ -119,8 +115,8 @@ export default function VehicleDetailPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-black text-white py-12 px-8">
-        <div className="max-w-6xl mx-auto">
-          <p className="text-center text-xl">Loading...</p>
+        <div className="max-w-6xl mx-auto text-center">
+          <p className="text-gray-400">Loading...</p>
         </div>
       </main>
     )
@@ -130,35 +126,38 @@ export default function VehicleDetailPage() {
     return (
       <main className="min-h-screen bg-black text-white py-12 px-8">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded mb-4">
+          <div className="bg-red-500/10 border border-red-500 text-red-400 p-4 rounded-xl mb-4">
             {error || 'Vehicle not found'}
           </div>
-          <Link href="/vehicles" className="text-blue-500 hover:text-blue-400">
-            ← Back to vehicles
-          </Link>
+          <Link href="/vehicles" className="text-blue-400 hover:text-blue-300">← Back to vehicles</Link>
         </div>
       </main>
     )
   }
 
+  const images = vehicle.images?.length > 0 ? vehicle.images : []
+  const hasYear = vehicle.year > 1900
+  const displayTitle = `${hasYear ? vehicle.year + ' ' : ''}${vehicle.make} ${vehicle.model}`.trim()
+
   return (
-    <main className="min-h-screen bg-black text-white py-12 px-8">
+    <main className="min-h-screen bg-black text-white py-10 px-4 sm:px-6">
       <div className="max-w-6xl mx-auto">
-        {/* Back button */}
-        <Link href="/vehicles" className="text-blue-500 hover:text-blue-400 mb-6 inline-block">
+        <Link href="/vehicles" className="text-blue-400 hover:text-blue-300 text-sm mb-6 inline-block">
           ← Back to vehicles
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main content */}
+          {/* ── Left / main column ── */}
           <div className="lg:col-span-2">
-            {/* Images */}
+
+            {/* Image gallery */}
             <div className="mb-6">
-              <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden mb-4">
-                {vehicle.images && vehicle.images.length > 0 ? (
+              {/* Main image */}
+              <div className="aspect-video bg-gray-900 rounded-2xl overflow-hidden relative">
+                {images[activeImg] ? (
                   <img
-                    src={vehicle.images[0]}
-                    alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                    src={images[activeImg]}
+                    alt={displayTitle}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -166,73 +165,125 @@ export default function VehicleDetailPage() {
                     No image available
                   </div>
                 )}
+                {/* Prev / Next arrows */}
+                {images.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setActiveImg((i) => (i - 1 + images.length) % images.length)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-9 h-9 flex items-center justify-center transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setActiveImg((i) => (i + 1) % images.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-9 h-9 flex items-center justify-center transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    {/* Image counter */}
+                    <span className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full">
+                      {activeImg + 1} / {images.length}
+                    </span>
+                  </>
+                )}
               </div>
+
+              {/* Thumbnails */}
+              {images.length > 1 && (
+                <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                  {images.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImg(i)}
+                      className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                        i === activeImg
+                          ? 'border-blue-500 opacity-100'
+                          : 'border-gray-700 opacity-60 hover:opacity-90 hover:border-gray-500'
+                      }`}
+                    >
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Title and Price */}
+            {/* Title and price */}
             <div className="mb-6">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <span className="inline-block px-3 py-1 bg-blue-600 text-sm rounded mb-2">
-                    {vehicle.condition}
-                  </span>
-                  <h1 className="text-4xl font-bold">
-                    {vehicle.year} {vehicle.make} {vehicle.model}
-                  </h1>
-                </div>
-                <div className="text-right">
-                  <p className="text-3xl font-bold text-blue-500">
-                    {formatCurrency(vehicle.price, vehicle.currency)}
-                  </p>
-                </div>
+              <span className="inline-block px-3 py-1 bg-blue-600/20 text-blue-400 text-xs font-semibold rounded-full border border-blue-600/30 mb-3">
+                {vehicle.condition}
+              </span>
+              <div className="flex items-start justify-between gap-4">
+                <h1 className="text-3xl sm:text-4xl font-bold leading-tight">{displayTitle}</h1>
+                <p className="text-2xl sm:text-3xl font-bold text-blue-400 flex-shrink-0">
+                  {formatCurrency(vehicle.price, vehicle.currency)}
+                </p>
               </div>
             </div>
 
-            {/* Specs Grid */}
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
-              <h2 className="text-2xl font-semibold mb-4">Specifications</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-gray-400 text-sm">Mileage</p>
-                  <p className="font-semibold">{formatMileage(vehicle.mileage)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Transmission</p>
-                  <p className="font-semibold">{vehicle.transmission}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Fuel Type</p>
-                  <p className="font-semibold">{vehicle.fuelType}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Engine</p>
-                  <p className="font-semibold">{vehicle.engineSize || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Color</p>
-                  <p className="font-semibold">{vehicle.color}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400 text-sm">VIN</p>
-                  <p className="font-semibold text-sm">{vehicle.vin}</p>
-                </div>
+            {/* Specs grid */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
+              <h2 className="text-lg font-semibold mb-4">Specifications</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
+                {vehicle.mileage > 0 && (
+                  <div>
+                    <p className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Mileage</p>
+                    <p className="font-semibold">{formatMileage(vehicle.mileage)}</p>
+                  </div>
+                )}
+                {vehicle.transmission && (
+                  <div>
+                    <p className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Transmission</p>
+                    <p className="font-semibold">{vehicle.transmission}</p>
+                  </div>
+                )}
+                {vehicle.fuelType && (
+                  <div>
+                    <p className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Fuel Type</p>
+                    <p className="font-semibold">{vehicle.fuelType}</p>
+                  </div>
+                )}
+                {vehicle.engineSize && (
+                  <div>
+                    <p className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Engine</p>
+                    <p className="font-semibold">{vehicle.engineSize}</p>
+                  </div>
+                )}
+                {vehicle.color && vehicle.color !== 'Unspecified' && (
+                  <div>
+                    <p className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Colour</p>
+                    <p className="font-semibold">{vehicle.color}</p>
+                  </div>
+                )}
+                {hasYear && (
+                  <div>
+                    <p className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Year</p>
+                    <p className="font-semibold">{vehicle.year}</p>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Description */}
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
-              <h2 className="text-2xl font-semibold mb-4">Description</h2>
-              <p className="text-gray-300 leading-relaxed">{vehicle.description}</p>
-            </div>
+            {vehicle.description && (
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
+                <h2 className="text-lg font-semibold mb-3">Description</h2>
+                <p className="text-gray-300 leading-relaxed whitespace-pre-line">{vehicle.description}</p>
+              </div>
+            )}
 
             {/* Features */}
             {vehicle.features && vehicle.features.length > 0 && (
-              <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-                <h2 className="text-2xl font-semibold mb-4">Features</h2>
-                <ul className="grid grid-cols-2 gap-2">
-                  {vehicle.features.map((feature, index) => (
-                    <li key={index} className="flex items-center text-gray-300">
-                      <span className="text-blue-500 mr-2">✓</span>
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                <h2 className="text-lg font-semibold mb-4">Features</h2>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4">
+                  {vehicle.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2 text-gray-300 text-sm">
+                      <span className="text-blue-400 mt-0.5 flex-shrink-0">✓</span>
                       {feature}
                     </li>
                   ))}
@@ -241,37 +292,35 @@ export default function VehicleDetailPage() {
             )}
           </div>
 
-          {/* Sidebar */}
+          {/* ── Sidebar ── */}
           <div className="lg:col-span-1">
-            {/* Seller Info */}
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6 sticky top-4">
-              <h3 className="text-xl font-semibold mb-4">Seller Information</h3>
+            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 sticky top-4">
+              <h3 className="text-lg font-semibold mb-4">Seller Information</h3>
 
               {vehicle.seller.role === 'DEALER' && vehicle.seller.dealershipName ? (
                 <div className="mb-4">
-                  <p className="text-sm text-gray-400">Dealership</p>
-                  <p className="font-semibold text-lg">{vehicle.seller.dealershipName}</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Dealership</p>
+                  <p className="font-semibold">{vehicle.seller.dealershipName}</p>
                 </div>
               ) : (
                 <div className="mb-4">
-                  <p className="text-sm text-gray-400">Private Seller</p>
-                  <p className="font-semibold text-lg">
-                    {vehicle.seller.firstName} {vehicle.seller.lastName}
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Private Seller</p>
+                  <p className="font-semibold">{vehicle.seller.firstName} {vehicle.seller.lastName}</p>
+                </div>
+              )}
+
+              {(vehicle.location.city || vehicle.location.state) && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Location</p>
+                  <p className="font-semibold">
+                    {[vehicle.location.city, vehicle.location.state].filter(Boolean).join(', ')}
                   </p>
                 </div>
               )}
 
-              <div className="mb-4">
-                <p className="text-sm text-gray-400">Location</p>
-                <p className="font-semibold">
-                  {vehicle.location.city}, {vehicle.location.state}
-                </p>
-                <p className="text-sm text-gray-400">{vehicle.location.zipCode}</p>
-              </div>
-
               {vehicle.seller.phone && (
                 <div className="mb-4">
-                  <p className="text-sm text-gray-400">Phone</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Phone</p>
                   <p className="font-semibold">{vehicle.seller.phone}</p>
                 </div>
               )}
@@ -279,7 +328,7 @@ export default function VehicleDetailPage() {
               <button
                 onClick={handleContactSeller}
                 disabled={contactLoading || vehicle.seller.id === user?.id}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded transition-colors mb-2"
+                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-colors mb-2"
               >
                 {contactLoading ? 'Opening chat…' : 'Contact Seller'}
               </button>
@@ -287,14 +336,14 @@ export default function VehicleDetailPage() {
               <button
                 onClick={handleBuyNow}
                 disabled={buyLoading || vehicle.seller.id === user?.id || vehicle.status !== 'LIVE'}
-                className="w-full bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded transition-colors"
+                className="w-full bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-colors"
               >
                 {buyLoading ? 'Opening…' : 'Buy Now'}
               </button>
 
-              <div className="mt-6 pt-6 border-t border-gray-800 text-sm text-gray-400">
-                <p>Listed {formatDate(vehicle.createdAt)}</p>
-              </div>
+              <p className="mt-4 pt-4 border-t border-gray-800 text-xs text-gray-500">
+                Listed {formatDate(vehicle.createdAt)}
+              </p>
             </div>
           </div>
         </div>
