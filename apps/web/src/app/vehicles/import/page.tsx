@@ -111,7 +111,8 @@ export default function ImportPage() {
         setSelected(new Set())
       }
     } catch (err: any) {
-      setScrapeError(err.response?.data?.message || 'Import failed')
+      const detail = err.response?.data?.errors?.map((e: any) => `${e.field}: ${e.message}`).join(' | ')
+      setScrapeError(detail || err.response?.data?.message || 'Import failed')
     } finally {
       setImporting(false)
     }

@@ -16,19 +16,20 @@ const confirmSchema = Joi.object({
   vehicles: Joi.array().items(
     Joi.object({
       make: Joi.string().required(),
-      model: Joi.string().allow('').default(''),
+      model: Joi.string().allow(null, '').default(''),
       year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 2)
         .allow(null).default(new Date().getFullYear()),
       price: Joi.number().min(0).allow(null).default(0),
-      currency: Joi.string().default('GBP'),
+      currency: Joi.string().allow(null, '').default('GBP'),
       mileage: Joi.number().min(0).allow(null).default(0),
       fuelType: Joi.string().allow(null, '').default('PETROL'),
       transmission: Joi.string().allow(null, '').default('MANUAL'),
       color: Joi.string().allow(null, '').default(''),
       engineSize: Joi.string().allow(null, '').default(''),
       description: Joi.string().allow(null, '').default(''),
-      images: Joi.array().items(Joi.string()).default([]),
-      sourceUrl: Joi.string().allow('').default(''),
+      images: Joi.array().items(Joi.string().allow('')).allow(null).default([]),
+      sourceUrl: Joi.string().allow(null, '').default(''),
+      confidence: Joi.string().allow(null, '').optional(),
     })
   ).min(1).required(),
 })
@@ -100,6 +101,7 @@ router.post('/confirm', authenticate, validate(confirmSchema), async (req: AuthR
 
   for (const v of vehicles) {
     try {
+      const cleanImages = (v.images || []).filter((img: any) => typeof img === 'string' && img.length > 0)
       const result = await pool.query(
         `INSERT INTO vehicles
            (seller_id, make, model, year, vin, price, currency,
@@ -111,16 +113,16 @@ router.post('/confirm', authenticate, validate(confirmSchema), async (req: AuthR
          RETURNING id`,
         [
           sellerId,
-          v.make, v.model, v.year,
+          v.make, v.model || '', v.year || new Date().getFullYear(),
           '',                              // vin — unknown
-          v.price, v.currency,
+          v.price || 0, v.currency || 'GBP',
           v.mileage || 0,
           v.fuelType || 'PETROL',
           v.transmission || 'MANUAL',
           v.engineSize || '',
           v.color || '',
           v.description || `${v.year} ${v.make} ${v.model} — imported from ${v.sourceUrl || 'external listing'}`,
-          v.images || [],
+          cleanImages,
         ]
       )
       created.push(result.rows[0].id)
