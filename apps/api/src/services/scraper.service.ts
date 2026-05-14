@@ -1,4 +1,73 @@
 import * as cheerio from 'cheerio'
+import type { Browser } from 'puppeteer'
+
+// ── Puppeteer browser singleton ───────────────────────────────────────────────
+let _browser: Browser | null = null
+
+async function getBrowser(): Promise<Browser> {
+  if (_browser?.connected) return _browser
+  const puppeteer = (await import('puppeteer')).default
+  _browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-zygote',
+      '--disable-extensions',
+      '--disable-background-networking',
+    ],
+  })
+  _browser.on('disconnected', () => { _browser = null })
+  return _browser
+}
+
+async function fetchRenderedHtml(url: string): Promise<string> {
+  const browser = await getBrowser()
+  const page = await browser.newPage()
+  try {
+    await page.setUserAgent(HEADERS['User-Agent'])
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-GB,en;q=0.9' })
+
+    // Block actual image/font/media downloads — we only need the DOM with img src attrs
+    await page.setRequestInterception(true)
+    page.on('request', (req) => {
+      const type = req.resourceType()
+      if (type === 'font' || type === 'media') {
+        req.abort()
+      } else {
+        req.continue()
+      }
+    })
+
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 })
+
+    // Scroll through the page to trigger intersection-observer lazy loaders
+    await page.evaluate(() => new Promise<void>((resolve) => {
+      /* eslint-disable no-undef */
+      let scrolled = 0
+      const step = 400
+      const timer = (globalThis as any).setInterval(() => {
+        ;(globalThis as any).window.scrollBy(0, step)
+        scrolled += step
+        if (scrolled >= (globalThis as any).document.body.scrollHeight) {
+          ;(globalThis as any).clearInterval(timer)
+          resolve()
+        }
+      }, 120)
+    }))
+
+    await new Promise(r => setTimeout(r, 800))
+    return await page.content()
+  } finally {
+    await page.close()
+  }
+}
+
+// Shut the browser down cleanly when the process exits
+process.on('exit', () => { _browser?.close() })
+process.on('SIGTERM', () => { _browser?.close() })
 
 export interface ScrapedVehicle {
   make: string
@@ -329,37 +398,34 @@ function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scr
 // ── Main entry point ──────────────────────────────────────────────────────────
 export class ScraperService {
   static async scrapeUrl(url: string): Promise<{ vehicles: ScrapedVehicle[]; warning?: string }> {
-    let html: string
-    try {
-      const res = await fetch(url, {
-        headers: HEADERS,
-        signal: AbortSignal.timeout(15000),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      html = await res.text()
-    } catch (err: any) {
-      throw new Error(`Could not fetch page: ${err.message}`)
-    }
-
-    const $ = cheerio.load(html)
     const urlLower = url.toLowerCase()
-    let vehicles: ScrapedVehicle[] = []
     let warning: string | undefined
 
-    if (urlLower.includes('autotrader.co.uk')) {
-      vehicles = parseAutoTraderDealer(html, url)
-      if (vehicles.length === 0) {
-        // AutoTrader dealer pages are heavily JS-rendered — try JSON-LD (works for individual listings)
-        vehicles = extractJsonLd(html)
-        if (vehicles.length === 0) {
-          warning = 'AutoTrader dealer pages require a browser to render. Try pasting the URL of an individual car listing instead, or paste your own dealer website URL.'
+    // ── Pass 1: static fetch (fast) ───────────────────────────────────────────
+    let vehicles = await ScraperService._parseHtml(
+      await ScraperService._fetchStatic(url),
+      url,
+      urlLower,
+    )
+
+    // ── Pass 2: headless browser fallback (JS-rendered sites) ─────────────────
+    if (vehicles.length === 0 && !urlLower.includes('autotrader.co.uk')) {
+      try {
+        vehicles = await ScraperService._parseHtml(
+          await fetchRenderedHtml(url),
+          url,
+          urlLower,
+        )
+        if (vehicles.length > 0) {
+          warning = 'Page required JavaScript rendering — results may take a moment on first load.'
         }
+      } catch {
+        // headless failed — carry on with empty result
       }
-    } else if (urlLower.includes('motors.co.uk')) {
-      vehicles = parseMotors(html, $, url)
-      if (vehicles.length === 0) vehicles = extractJsonLd(html, url)
-    } else {
-      vehicles = parseGeneric(html, $, url)
+    }
+
+    if (urlLower.includes('autotrader.co.uk') && vehicles.length === 0) {
+      warning = 'AutoTrader dealer pages require a browser to render. Try pasting the URL of an individual car listing instead, or paste your own dealer website URL.'
     }
 
     // Deduplicate by make+model+year+price
@@ -371,16 +437,45 @@ export class ScraperService {
       return true
     })
 
-    // Only return vehicles with at least a make
     vehicles = vehicles.filter((v) => v.make && v.make.length > 1)
 
-    // For the single-vehicle case: if one vehicle and no image, try og:image
+    return { vehicles, warning }
+  }
+
+  private static async _fetchStatic(url: string): Promise<string> {
+    try {
+      const res = await fetch(url, {
+        headers: HEADERS,
+        signal: AbortSignal.timeout(15000),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return await res.text()
+    } catch (err: any) {
+      throw new Error(`Could not fetch page: ${err.message}`)
+    }
+  }
+
+  private static _parseHtml(html: string, url: string, urlLower: string): ScrapedVehicle[] {
+    const $ = cheerio.load(html)
+
+    let vehicles: ScrapedVehicle[]
+    if (urlLower.includes('autotrader.co.uk')) {
+      vehicles = parseAutoTraderDealer(html, url)
+      if (vehicles.length === 0) vehicles = extractJsonLd(html, url)
+    } else if (urlLower.includes('motors.co.uk')) {
+      vehicles = parseMotors(html, $, url)
+      if (vehicles.length === 0) vehicles = extractJsonLd(html, url)
+    } else {
+      vehicles = parseGeneric(html, $, url)
+    }
+
+    // Single-vehicle page with no image: try og:image
     if (vehicles.length === 1 && vehicles[0].images.length === 0) {
       const ogImg = $('meta[property="og:image"]').attr('content') ||
                     $('meta[name="og:image"]').attr('content') || ''
       if (ogImg) vehicles[0].images = [resolveImage(ogImg, url)]
     }
 
-    return { vehicles, warning }
+    return vehicles
   }
 }
