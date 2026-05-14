@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import apiClient from '@/lib/api/client'
@@ -37,8 +36,7 @@ const EXAMPLE_URLS = [
 ]
 
 export default function ImportPage() {
-  const { isAuthenticated, user } = useAuth()
-  const router = useRouter()
+  const { isAuthenticated } = useAuth()
 
   const [url, setUrl] = useState('')
   const [scraping, setScraping] = useState(false)
