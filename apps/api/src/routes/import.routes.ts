@@ -1,9 +1,13 @@
 import { Router, Request, Response } from 'express'
+import { randomUUID } from 'crypto'
 import Joi from 'joi'
 import { authenticate, AuthRequest } from '../middleware/auth.middleware'
 import { validate } from '../middleware/validate.middleware'
 import { ScraperService } from '../services/scraper.service'
 import { pool } from '../db/config'
+
+const VALID_FUEL_TYPES = ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID', 'PLUG_IN_HYBRID']
+const VALID_TRANSMISSIONS = ['MANUAL', 'AUTOMATIC', 'SEMI_AUTOMATIC']
 
 const router = Router()
 
@@ -102,6 +106,10 @@ router.post('/confirm', authenticate, validate(confirmSchema), async (req: AuthR
   for (const v of vehicles) {
     try {
       const cleanImages = (v.images || []).filter((img: any) => typeof img === 'string' && img.length > 0)
+      const placeholderVin = `IMP${randomUUID().replace(/-/g, '').substring(0, 14).toUpperCase()}`
+      const fuelType = VALID_FUEL_TYPES.includes(v.fuelType) ? v.fuelType : 'PETROL'
+      const transmission = VALID_TRANSMISSIONS.includes(v.transmission) ? v.transmission : 'MANUAL'
+
       const result = await pool.query(
         `INSERT INTO vehicles
            (seller_id, make, model, year, vin, price, currency,
@@ -114,14 +122,14 @@ router.post('/confirm', authenticate, validate(confirmSchema), async (req: AuthR
         [
           sellerId,
           v.make, v.model || '', v.year || new Date().getFullYear(),
-          '',                              // vin — unknown
+          placeholderVin,
           v.price || 0, v.currency || 'GBP',
           v.mileage || 0,
-          v.fuelType || 'PETROL',
-          v.transmission || 'MANUAL',
+          fuelType,
+          transmission,
           v.engineSize || '',
-          v.color || '',
-          v.description || `${v.year} ${v.make} ${v.model} — imported from ${v.sourceUrl || 'external listing'}`,
+          v.color || 'Unspecified',
+          v.description || `${v.year || ''} ${v.make} ${v.model || ''} — imported from ${v.sourceUrl || 'external listing'}`.trim(),
           cleanImages,
         ]
       )

@@ -109,9 +109,8 @@ function normaliseFuel(raw: string): string | null {
 function normaliseTransmission(raw: string): string | null {
   if (!raw) return null
   const t = raw.toUpperCase()
-  if (t.includes('AUTO')) return 'AUTOMATIC'
+  if (t.includes('AUTO') || t.includes('CVT')) return 'AUTOMATIC'
   if (t.includes('MANUAL')) return 'MANUAL'
-  if (t.includes('CVT')) return 'CVT'
   if (t.includes('SEMI')) return 'SEMI_AUTOMATIC'
   return null
 }
