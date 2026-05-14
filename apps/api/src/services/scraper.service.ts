@@ -67,8 +67,9 @@ function resolveImage(src: string, baseUrl: string): string {
   try { return new URL(src, baseUrl).href } catch { return '' }
 }
 
-// Extracts the best image URL from an img element, covering common lazy-load patterns
+// Extracts the best image URL from an element, covering common lazy-load patterns
 function pickImgSrc(el: cheerio.Cheerio<any>, baseUrl: string): string {
+  // 1. Standard and lazy-load img attributes
   const img = el.find('img').first()
   const src =
     img.attr('src') ||
@@ -81,19 +82,37 @@ function pickImgSrc(el: cheerio.Cheerio<any>, baseUrl: string): string {
     img.attr('data-img') ||
     img.attr('data-full-url') ||
     img.attr('data-hi-res-src') ||
-    (img.attr('srcset') || '').split(/[\s,]+/).find((s) => s.startsWith('http') || s.startsWith('/')) ||
+    img.attr('data-srcset')?.split(/[\s,]+/).find((s: string) => s.startsWith('http') || s.startsWith('/')) ||
+    img.attr('srcset')?.split(/[\s,]+/).find((s: string) => s.startsWith('http') || s.startsWith('/')) ||
     ''
-  if (src) return resolveImage(src, baseUrl)
+  if (src && !src.startsWith('data:')) return resolveImage(src, baseUrl)
 
-  // Fallback: background-image on any child element
+  // 2. <noscript> lazy-load fallback (very common in WordPress/WooCommerce sites)
+  const noscriptHtml = el.find('noscript').first().text()
+  if (noscriptHtml) {
+    const m = noscriptHtml.match(/src=["']([^"']+)["']/)
+    if (m && m[1] && !m[1].startsWith('data:')) return resolveImage(m[1], baseUrl)
+  }
+
+  // 3. background-image CSS on any child element
   let bgUrl = ''
   el.find('[style]').each((_, el2) => {
     if (bgUrl) return
-    const style = el2.attribs?.style || ''
+    const style = (el2 as any).attribs?.style || ''
     const m = style.match(/background-image\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/)
     if (m) bgUrl = m[1]
   })
-  return bgUrl ? resolveImage(bgUrl, baseUrl) : ''
+  if (bgUrl) return resolveImage(bgUrl, baseUrl)
+
+  // 4. Any <a> or <div> with a data attribute that looks like an image URL
+  let dataImgUrl = ''
+  el.find('[data-src],[data-image],[data-lazy],[data-lazy-src],[data-original]').each((_, node) => {
+    if (dataImgUrl) return
+    const attrs = (node as any).attribs || {}
+    const val = attrs['data-src'] || attrs['data-image'] || attrs['data-lazy'] || attrs['data-lazy-src'] || attrs['data-original'] || ''
+    if (val && !val.startsWith('data:')) dataImgUrl = val
+  })
+  return dataImgUrl ? resolveImage(dataImgUrl, baseUrl) : ''
 }
 
 function parseYear(raw: string | number): number | null {
@@ -346,6 +365,13 @@ export class ScraperService {
 
     // Only return vehicles with at least a make
     vehicles = vehicles.filter((v) => v.make && v.make.length > 1)
+
+    // For the single-vehicle case: if one vehicle and no image, try og:image
+    if (vehicles.length === 1 && vehicles[0].images.length === 0) {
+      const ogImg = $('meta[property="og:image"]').attr('content') ||
+                    $('meta[name="og:image"]').attr('content') || ''
+      if (ogImg) vehicles[0].images = [resolveImage(ogImg, url)]
+    }
 
     return { vehicles, warning }
   }
