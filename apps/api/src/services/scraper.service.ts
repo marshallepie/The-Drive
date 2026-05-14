@@ -60,6 +60,13 @@ function parseMileage(raw: string): number | null {
   return isNaN(num) ? null : num
 }
 
+function resolveImage(src: string, baseUrl: string): string {
+  if (!src || src.startsWith('data:')) return ''
+  if (src.startsWith('//')) return 'https:' + src
+  if (src.startsWith('http')) return src
+  try { return new URL(src, baseUrl).href } catch { return '' }
+}
+
 function parseYear(raw: string | number): number | null {
   const n = parseInt(String(raw))
   if (isNaN(n) || n < 1900 || n > new Date().getFullYear() + 2) return null
@@ -67,7 +74,7 @@ function parseYear(raw: string | number): number | null {
 }
 
 // ── JSON-LD extractor (schema.org/Car or Product) ────────────────────────────
-function extractJsonLd(html: string): ScrapedVehicle[] {
+function extractJsonLd(html: string, baseUrl = ''): ScrapedVehicle[] {
   const results: ScrapedVehicle[] = []
   const regex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
   let match
@@ -94,7 +101,10 @@ function extractJsonLd(html: string): ScrapedVehicle[] {
         const images: string[] = []
         if (item.image) {
           const imgs = Array.isArray(item.image) ? item.image : [item.image]
-          images.push(...imgs.filter((i: any) => typeof i === 'string'))
+          images.push(...imgs
+            .filter((i: any) => typeof i === 'string')
+            .map((i: string) => resolveImage(i, baseUrl))
+            .filter(Boolean))
         }
 
         results.push({
@@ -156,7 +166,7 @@ function parseAutoTraderDealer(html: string, baseUrl: string): ScrapedVehicle[] 
         color: v.colour || v.color || null,
         engineSize: v.engineSize || null,
         description: v.description || null,
-        images: (v.images || []).map((i: any) => typeof i === 'string' ? i : i?.url || i?.src || '').filter(Boolean),
+        images: (v.images || []).map((i: any) => resolveImage(typeof i === 'string' ? i : i?.url || i?.src || '', baseUrl)).filter(Boolean),
         sourceUrl: `https://www.autotrader.co.uk${v.link || ''}`,
         confidence: 'high',
       })
@@ -166,7 +176,7 @@ function parseAutoTraderDealer(html: string, baseUrl: string): ScrapedVehicle[] 
 }
 
 // ── Motors.co.uk parser ──────────────────────────────────────────────────────
-function parseMotors(html: string, $: cheerio.CheerioAPI): ScrapedVehicle[] {
+function parseMotors(html: string, $: cheerio.CheerioAPI, baseUrl: string): ScrapedVehicle[] {
   const results: ScrapedVehicle[] = []
   $('.vehicle-card, .car-listing, [data-vehicle-id], .search-result-item').each((_, el) => {
     try {
@@ -182,7 +192,7 @@ function parseMotors(html: string, $: cheerio.CheerioAPI): ScrapedVehicle[] {
       const mileageRaw = card.find('[class*="mileage"], [class*="odometer"]').first().text().trim()
       const fuelRaw = card.find('[class*="fuel"]').first().text().trim()
       const transRaw = card.find('[class*="transmission"]').first().text().trim()
-      const imgSrc = card.find('img').first().attr('src') || card.find('img').first().attr('data-src') || ''
+      const rawImg = card.find('img').first().attr('src') || card.find('img').first().attr('data-src') || ''
 
       if (!make) return
       results.push({
@@ -195,7 +205,7 @@ function parseMotors(html: string, $: cheerio.CheerioAPI): ScrapedVehicle[] {
         color: null,
         engineSize: null,
         description: null,
-        images: imgSrc ? [imgSrc] : [],
+        images: rawImg ? [resolveImage(rawImg, baseUrl)] : [],
         sourceUrl: '',
         confidence: 'medium',
       })
@@ -207,7 +217,7 @@ function parseMotors(html: string, $: cheerio.CheerioAPI): ScrapedVehicle[] {
 // ── Generic dealer website parser ────────────────────────────────────────────
 function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): ScrapedVehicle[] {
   // First try JSON-LD
-  const fromJsonLd = extractJsonLd(html)
+  const fromJsonLd = extractJsonLd(html, baseUrl)
   if (fromJsonLd.length > 0) return fromJsonLd
 
   // Try Next.js data
@@ -250,7 +260,7 @@ function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scr
         color: null,
         engineSize: null,
         description: null,
-        images: imgSrc ? [imgSrc] : [],
+        images: imgSrc ? [resolveImage(imgSrc, baseUrl)] : [],
         sourceUrl: '',
         confidence: 'low',
       })
@@ -290,8 +300,8 @@ export class ScraperService {
         }
       }
     } else if (urlLower.includes('motors.co.uk')) {
-      vehicles = parseMotors(html, $)
-      if (vehicles.length === 0) vehicles = extractJsonLd(html)
+      vehicles = parseMotors(html, $, url)
+      if (vehicles.length === 0) vehicles = extractJsonLd(html, url)
     } else {
       vehicles = parseGeneric(html, $, url)
     }

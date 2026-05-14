@@ -16,16 +16,17 @@ const confirmSchema = Joi.object({
   vehicles: Joi.array().items(
     Joi.object({
       make: Joi.string().required(),
-      model: Joi.string().required(),
-      year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 2).required(),
-      price: Joi.number().min(0).required(),
+      model: Joi.string().allow('').default(''),
+      year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 2)
+        .allow(null).default(new Date().getFullYear()),
+      price: Joi.number().min(0).allow(null).default(0),
       currency: Joi.string().default('GBP'),
-      mileage: Joi.number().min(0).default(0),
-      fuelType: Joi.string().default('PETROL'),
-      transmission: Joi.string().default('MANUAL'),
-      color: Joi.string().default(''),
-      engineSize: Joi.string().default('').allow(''),
-      description: Joi.string().default('').allow(''),
+      mileage: Joi.number().min(0).allow(null).default(0),
+      fuelType: Joi.string().allow(null, '').default('PETROL'),
+      transmission: Joi.string().allow(null, '').default('MANUAL'),
+      color: Joi.string().allow(null, '').default(''),
+      engineSize: Joi.string().allow(null, '').default(''),
+      description: Joi.string().allow(null, '').default(''),
       images: Joi.array().items(Joi.string()).default([]),
       sourceUrl: Joi.string().allow('').default(''),
     })
