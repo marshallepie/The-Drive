@@ -71,52 +71,56 @@ function resolveImage(src: string, baseUrl: string): string {
   try { return new URL(src, baseUrl).href } catch { return '' }
 }
 
-// Extracts the best image URL from an element, covering common lazy-load patterns
-function pickImgSrc(el: cheerio.Cheerio<any>, baseUrl: string): string {
-  // 1. Standard and lazy-load img attributes
-  const img = el.find('img').first()
-  const src =
-    img.attr('src') ||
-    img.attr('data-src') ||
-    img.attr('data-lazy-src') ||
-    img.attr('data-lazy') ||
-    img.attr('data-original') ||
-    img.attr('data-image') ||
-    img.attr('data-url') ||
-    img.attr('data-img') ||
-    img.attr('data-full-url') ||
-    img.attr('data-hi-res-src') ||
-    img.attr('data-srcset')?.split(/[\s,]+/).find((s: string) => s.startsWith('http') || s.startsWith('/')) ||
-    img.attr('srcset')?.split(/[\s,]+/).find((s: string) => s.startsWith('http') || s.startsWith('/')) ||
-    ''
-  if (src && !src.startsWith('data:')) return resolveImage(src, baseUrl)
+// Collects all images from a card element, covering lazy-load patterns
+function pickAllImgSrcs(el: cheerio.Cheerio<any>, baseUrl: string): string[] {
+  const seen = new Set<string>()
 
-  // 2. <noscript> lazy-load fallback (very common in WordPress/WooCommerce sites)
-  const noscriptHtml = el.find('noscript').first().text()
-  if (noscriptHtml) {
-    const m = noscriptHtml.match(/src=["']([^"']+)["']/)
-    if (m && m[1] && !m[1].startsWith('data:')) return resolveImage(m[1], baseUrl)
+  const add = (src: string) => {
+    if (!src || src.startsWith('data:')) return
+    if (/placeholder|spinner|loading\.gif|blank\.|spacer\./i.test(src)) return
+    const resolved = resolveImage(src, baseUrl)
+    if (resolved) seen.add(resolved)
   }
 
-  // 3. background-image CSS on any child element
-  let bgUrl = ''
-  el.find('[style]').each((_, el2) => {
-    if (bgUrl) return
-    const style = (el2 as any).attribs?.style || ''
-    const m = style.match(/background-image\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/)
-    if (m) bgUrl = m[1]
-  })
-  if (bgUrl) return resolveImage(bgUrl, baseUrl)
+  // 1. All <img> elements — check every known lazy-load attribute
+  el.find('img').each((_, imgEl) => {
+    const a = (imgEl as any).attribs || {}
+    const w = parseInt(a.width || '0')
+    const h = parseInt(a.height || '0')
+    if ((w > 0 && w < 60) || (h > 0 && h < 60)) return // skip icons
 
-  // 4. Any <a> or <div> with a data attribute that looks like an image URL
-  let dataImgUrl = ''
-  el.find('[data-src],[data-image],[data-lazy],[data-lazy-src],[data-original]').each((_, node) => {
-    if (dataImgUrl) return
-    const attrs = (node as any).attribs || {}
-    const val = attrs['data-src'] || attrs['data-image'] || attrs['data-lazy'] || attrs['data-lazy-src'] || attrs['data-original'] || ''
-    if (val && !val.startsWith('data:')) dataImgUrl = val
+    add(
+      a.src || a['data-src'] || a['data-lazy-src'] || a['data-lazy'] ||
+      a['data-original'] || a['data-image'] || a['data-url'] || a['data-img'] ||
+      a['data-full-url'] || a['data-hi-res-src'] ||
+      (a.srcset || '').split(/[\s,]+/).find((s: string) => s.startsWith('http') || s.startsWith('/')) ||
+      (a['data-srcset'] || '').split(/[\s,]+/).find((s: string) => s.startsWith('http') || s.startsWith('/')) ||
+      ''
+    )
   })
-  return dataImgUrl ? resolveImage(dataImgUrl, baseUrl) : ''
+
+  // 2. <noscript> tags — lazy-load fallbacks (WordPress, WooCommerce, etc.)
+  el.find('noscript').each((_, ns) => {
+    const html = (ns as any).children?.[0]?.data || ''
+    const m = html.match(/src=["']([^"']+)["']/)
+    if (m) add(m[1])
+  })
+
+  // 3. data-* on non-img elements (gallery slides, carousel items)
+  el.find('[data-src],[data-image],[data-lazy],[data-lazy-src],[data-original]').each((_, node) => {
+    if ((node as any).name === 'img') return
+    const a = (node as any).attribs || {}
+    add(a['data-src'] || a['data-image'] || a['data-lazy'] || a['data-lazy-src'] || a['data-original'] || '')
+  })
+
+  // 4. CSS background-image on any child element
+  el.find('[style]').each((_, node) => {
+    const style = (node as any).attribs?.style || ''
+    const m = style.match(/background-image\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/)
+    if (m) add(m[1])
+  })
+
+  return Array.from(seen).slice(0, 10)
 }
 
 function parseYear(raw: string | number): number | null {
@@ -244,7 +248,7 @@ function parseMotors(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scra
       const mileageRaw = card.find('[class*="mileage"], [class*="odometer"]').first().text().trim()
       const fuelRaw = card.find('[class*="fuel"]').first().text().trim()
       const transRaw = card.find('[class*="transmission"]').first().text().trim()
-      const imgUrl = pickImgSrc(card, baseUrl)
+      const cardImages = pickAllImgSrcs(card, baseUrl)
 
       if (!make) return
       results.push({
@@ -257,7 +261,7 @@ function parseMotors(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scra
         color: null,
         engineSize: null,
         description: null,
-        images: imgUrl ? [imgUrl] : [],
+        images: cardImages,
         sourceUrl: '',
         confidence: 'medium',
       })
@@ -298,7 +302,7 @@ function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scr
       const { price, currency } = parsePrice(card.text())
       const mileage = parseMileage(card.text().match(/([\d,]+)\s*(miles|mi)/i)?.[1] || '')
       const fuelRaw = card.text().match(/petrol|diesel|electric|hybrid/i)?.[0] || ''
-      const imgUrl = pickImgSrc(card, baseUrl)
+      const cardImages = pickAllImgSrcs(card, baseUrl)
 
       if (rest.length < 2) return
       results.push({
@@ -312,7 +316,7 @@ function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scr
         color: null,
         engineSize: null,
         description: null,
-        images: imgUrl ? [imgUrl] : [],
+        images: cardImages,
         sourceUrl: '',
         confidence: 'low',
       })
