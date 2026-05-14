@@ -19,7 +19,7 @@ const confirmSchema = Joi.object({
       model: Joi.string().allow(null, '').default(''),
       year: Joi.number().integer().min(1900).max(new Date().getFullYear() + 2)
         .allow(null).default(new Date().getFullYear()),
-      price: Joi.number().min(0).allow(null).default(0),
+      price: Joi.number().min(0).allow(null).default(0).unsafe(),
       currency: Joi.string().allow(null, '').default('GBP'),
       mileage: Joi.number().min(0).allow(null).default(0),
       fuelType: Joi.string().allow(null, '').default('PETROL'),

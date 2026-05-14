@@ -50,8 +50,12 @@ function normaliseTransmission(raw: string): string | null {
 function parsePrice(raw: string): { price: number | null; currency: string } {
   if (!raw) return { price: null, currency: 'GBP' }
   const currency = raw.includes('$') ? 'USD' : raw.includes('€') ? 'EUR' : 'GBP'
-  const num = parseFloat(raw.replace(/[^0-9.]/g, ''))
-  return { price: isNaN(num) ? null : num, currency }
+  // Match a currency symbol followed by digits — avoids concatenating all digits in a full card text
+  const match = raw.match(/[£$€]\s*([\d,]+(?:\.\d{0,2})?)/) ||
+                raw.match(/([\d,]+(?:\.\d{0,2})?)\s*(?:GBP|USD|EUR)/)
+  if (!match) return { price: null, currency }
+  const num = parseFloat(match[1].replace(/,/g, ''))
+  return { price: isNaN(num) || num > 100_000_000 ? null : num, currency }
 }
 
 function parseMileage(raw: string): number | null {
