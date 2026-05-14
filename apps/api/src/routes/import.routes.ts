@@ -1,4 +1,4 @@
-import { Router, Response } from 'express'
+import { Router, Request, Response } from 'express'
 import Joi from 'joi'
 import { authenticate, AuthRequest } from '../middleware/auth.middleware'
 import { validate } from '../middleware/validate.middleware'
@@ -31,6 +31,48 @@ const confirmSchema = Joi.object({
       sourceUrl: Joi.string().allow('').default(''),
     })
   ).min(1).required(),
+})
+
+// GET /api/v1/import/proxy-image?url=<encoded-url>
+// Server-side image proxy — fetches with Referer header to bypass hotlink protection
+router.get('/proxy-image', async (req: Request, res: Response) => {
+  const raw = req.query.url as string
+  if (!raw) return res.status(400).send('Missing url')
+
+  let imageUrl: string
+  try {
+    const parsed = new URL(raw)
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('bad protocol')
+    imageUrl = parsed.href
+  } catch {
+    return res.status(400).send('Invalid url')
+  }
+
+  try {
+    const origin = new URL(imageUrl).origin
+    const upstream = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': origin + '/',
+        'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+
+    const contentType = upstream.headers.get('content-type') || ''
+    if (!contentType.startsWith('image/')) {
+      return res.status(415).send('Not an image')
+    }
+
+    res.setHeader('Content-Type', contentType)
+    res.setHeader('Cache-Control', 'public, max-age=86400')
+    res.setHeader('Access-Control-Allow-Origin', '*')
+
+    const buffer = await upstream.arrayBuffer()
+    res.send(Buffer.from(buffer))
+  } catch (err: any) {
+    res.status(502).send('Could not fetch image')
+  }
 })
 
 // POST /api/v1/import/scrape

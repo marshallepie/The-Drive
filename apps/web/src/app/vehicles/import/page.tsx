@@ -6,6 +6,13 @@ import { useAuth } from '@/contexts/AuthContext'
 import apiClient from '@/lib/api/client'
 import { formatCurrency } from '@drive/shared'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+
+function proxyImage(url: string): string {
+  if (!url) return ''
+  return `${API_BASE}/api/v1/import/proxy-image?url=${encodeURIComponent(url)}`
+}
+
 interface ScrapedVehicle {
   make: string
   model: string
@@ -259,7 +266,7 @@ export default function ImportPage() {
                     {/* Image */}
                     <div className="aspect-video bg-gray-800 relative">
                       {v.images[0] ? (
-                        <img src={v.images[0]} alt="" className="w-full h-full object-cover" />
+                        <img src={proxyImage(v.images[0])} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-700 text-sm">No image</div>
                       )}

@@ -67,6 +67,35 @@ function resolveImage(src: string, baseUrl: string): string {
   try { return new URL(src, baseUrl).href } catch { return '' }
 }
 
+// Extracts the best image URL from an img element, covering common lazy-load patterns
+function pickImgSrc(el: cheerio.Cheerio<any>, baseUrl: string): string {
+  const img = el.find('img').first()
+  const src =
+    img.attr('src') ||
+    img.attr('data-src') ||
+    img.attr('data-lazy-src') ||
+    img.attr('data-lazy') ||
+    img.attr('data-original') ||
+    img.attr('data-image') ||
+    img.attr('data-url') ||
+    img.attr('data-img') ||
+    img.attr('data-full-url') ||
+    img.attr('data-hi-res-src') ||
+    (img.attr('srcset') || '').split(/[\s,]+/).find((s) => s.startsWith('http') || s.startsWith('/')) ||
+    ''
+  if (src) return resolveImage(src, baseUrl)
+
+  // Fallback: background-image on any child element
+  let bgUrl = ''
+  el.find('[style]').each((_, el2) => {
+    if (bgUrl) return
+    const style = el2.attribs?.style || ''
+    const m = style.match(/background-image\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/)
+    if (m) bgUrl = m[1]
+  })
+  return bgUrl ? resolveImage(bgUrl, baseUrl) : ''
+}
+
 function parseYear(raw: string | number): number | null {
   const n = parseInt(String(raw))
   if (isNaN(n) || n < 1900 || n > new Date().getFullYear() + 2) return null
@@ -192,7 +221,7 @@ function parseMotors(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scra
       const mileageRaw = card.find('[class*="mileage"], [class*="odometer"]').first().text().trim()
       const fuelRaw = card.find('[class*="fuel"]').first().text().trim()
       const transRaw = card.find('[class*="transmission"]').first().text().trim()
-      const rawImg = card.find('img').first().attr('src') || card.find('img').first().attr('data-src') || ''
+      const imgUrl = pickImgSrc(card, baseUrl)
 
       if (!make) return
       results.push({
@@ -205,7 +234,7 @@ function parseMotors(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scra
         color: null,
         engineSize: null,
         description: null,
-        images: rawImg ? [resolveImage(rawImg, baseUrl)] : [],
+        images: imgUrl ? [imgUrl] : [],
         sourceUrl: '',
         confidence: 'medium',
       })
@@ -246,7 +275,7 @@ function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scr
       const { price, currency } = parsePrice(card.text())
       const mileage = parseMileage(card.text().match(/([\d,]+)\s*(miles|mi)/i)?.[1] || '')
       const fuelRaw = card.text().match(/petrol|diesel|electric|hybrid/i)?.[0] || ''
-      const imgSrc = card.find('img').first().attr('src') || card.find('img').first().attr('data-src') || ''
+      const imgUrl = pickImgSrc(card, baseUrl)
 
       if (rest.length < 2) return
       results.push({
@@ -260,7 +289,7 @@ function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scr
         color: null,
         engineSize: null,
         description: null,
-        images: imgSrc ? [resolveImage(imgSrc, baseUrl)] : [],
+        images: imgUrl ? [imgUrl] : [],
         sourceUrl: '',
         confidence: 'low',
       })
