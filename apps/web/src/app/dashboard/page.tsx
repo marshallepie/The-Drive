@@ -154,6 +154,20 @@ export default function DashboardPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [transactions, setTransactions] = useState<TxSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const handleDelete = async (id: string, label: string) => {
+    if (!confirm(`Delete "${label}"? This cannot be undone.`)) return
+    setDeletingId(id)
+    try {
+      await apiClient.delete(`/api/v1/vehicles/${id}`)
+      setVehicles((prev) => prev.filter((v) => v.id !== id))
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Delete failed')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   useEffect(() => {
     if (!isAuthenticated) { router.replace('/auth/login'); return }
@@ -257,48 +271,67 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {vehicles.map((v) => (
-                <Link
-                  key={v.id}
-                  href={`/vehicles/${v.id}`}
-                  className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition-colors group"
-                >
-                  <div className="aspect-video bg-gray-800">
-                    {v.images?.[0] ? (
-                      <img
-                        src={v.images[0]}
-                        alt={`${v.year} ${v.make} ${v.model}`}
-                        className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-600 text-sm">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        v.status === 'LIVE'  ? 'bg-green-500/15 text-green-400' :
-                        v.status === 'DRAFT' ? 'bg-yellow-500/15 text-yellow-400' :
-                        v.status === 'SOLD'  ? 'bg-gray-700 text-gray-400' :
-                                               'bg-gray-700 text-gray-400'
-                      }`}>
-                        {v.status}
-                      </span>
+              {vehicles.map((v) => {
+                const label = `${v.year > 1900 ? v.year + ' ' : ''}${v.make} ${v.model}`.trim()
+                return (
+                  <div key={v.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition-colors group relative">
+                    {/* Edit / Delete action buttons */}
+                    <div className="absolute top-2 right-2 z-10 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Link
+                        href={`/vehicles/${v.id}/edit`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-black/70 hover:bg-blue-600 text-white rounded-lg p-1.5 transition-colors"
+                        title="Edit listing"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(v.id, label)}
+                        disabled={deletingId === v.id}
+                        className="bg-black/70 hover:bg-red-600 text-white rounded-lg p-1.5 transition-colors disabled:opacity-50"
+                        title="Delete listing"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
-                    <p className="font-semibold text-sm">
-                      {v.year} {v.make} {v.model}
-                    </p>
-                    <p className="text-blue-400 font-bold mt-1">
-                      {formatCurrency(v.price, v.currency)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formatMileage(v.mileage)} · {v.location.city}
-                    </p>
+
+                    <Link href={`/vehicles/${v.id}`} className="block">
+                      <div className="aspect-video bg-gray-800">
+                        {v.images?.[0] ? (
+                          <img
+                            src={v.images[0]}
+                            alt={label}
+                            className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-600 text-sm">
+                            No image
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            v.status === 'LIVE'  ? 'bg-green-500/15 text-green-400' :
+                            v.status === 'DRAFT' ? 'bg-yellow-500/15 text-yellow-400' :
+                            v.status === 'SOLD'  ? 'bg-gray-700 text-gray-400' :
+                                                   'bg-gray-700 text-gray-400'
+                          }`}>
+                            {v.status}
+                          </span>
+                        </div>
+                        <p className="font-semibold text-sm">{label}</p>
+                        <p className="text-blue-400 font-bold mt-1">{formatCurrency(v.price, v.currency)}</p>
+                        <p className="text-xs text-gray-500 mt-1">{formatMileage(v.mileage)} · {v.location.city}</p>
+                      </div>
+                    </Link>
                   </div>
-                </Link>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

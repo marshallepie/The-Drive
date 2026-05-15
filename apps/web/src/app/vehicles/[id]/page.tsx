@@ -54,6 +54,20 @@ export default function VehicleDetailPage() {
   const [activeImg, setActiveImg] = useState(0)
   const [contactLoading, setContactLoading] = useState(false)
   const [buyLoading, setBuyLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!vehicle) return
+    if (!confirm(`Delete this listing? This cannot be undone.`)) return
+    setDeleting(true)
+    try {
+      await apiClient.delete(`/api/v1/vehicles/${vehicle.id}`)
+      router.replace('/dashboard')
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Delete failed')
+      setDeleting(false)
+    }
+  }
 
   useEffect(() => {
     if (params.id) fetchVehicle()
@@ -322,6 +336,25 @@ export default function VehicleDetailPage() {
                 <div className="mb-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Phone</p>
                   <p className="font-semibold">{vehicle.seller.phone}</p>
+                </div>
+              )}
+
+              {/* Owner-only: Edit & Delete */}
+              {user?.id === vehicle.seller.id && (
+                <div className="flex gap-2 mb-4">
+                  <Link
+                    href={`/vehicles/${vehicle.id}/edit`}
+                    className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm text-center"
+                  >
+                    Edit Listing
+                  </Link>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm disabled:opacity-50"
+                  >
+                    {deleting ? 'Deleting…' : 'Delete'}
+                  </button>
                 </div>
               )}
 
