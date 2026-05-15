@@ -479,6 +479,13 @@ function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scr
 
       const cardImages = pickAllImgSrcs(card, baseUrl)
 
+      // Capture the card's own detail-page link so we can fetch its full gallery later
+      const cardHref = card.find('a[href]').first().attr('href') || ''
+      let sourceUrl = ''
+      if (cardHref) {
+        try { sourceUrl = new URL(cardHref, baseUrl).href } catch { sourceUrl = '' }
+      }
+
       results.push({
         make, model, year,
         price, currency,
@@ -489,7 +496,7 @@ function parseGeneric(html: string, $: cheerio.CheerioAPI, baseUrl: string): Scr
         engineSize,
         description,
         images: cardImages,
-        sourceUrl: '',
+        sourceUrl,
         confidence: 'low',
       })
     } catch { /* skip */ }
@@ -545,20 +552,49 @@ export class ScraperService {
 
     vehicles = vehicles.filter((v) => v.make && v.make.length > 1)
 
+    // ── Pass 3: follow each vehicle's detail-page link to collect its full gallery ──
+    await ScraperService._enrichImages(vehicles, url)
+
     return { vehicles, warning }
   }
 
-  private static async _fetchStatic(url: string): Promise<string> {
+  private static async _fetchStatic(url: string, timeout = 15000): Promise<string> {
     try {
       const res = await fetch(url, {
         headers: HEADERS,
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(timeout),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       return await res.text()
     } catch (err: any) {
       throw new Error(`Could not fetch page: ${err.message}`)
     }
+  }
+
+  // Extract all images from a vehicle detail page (JSON-LD first, then DOM)
+  private static _extractDetailImages(html: string, pageUrl: string): string[] {
+    const fromJsonLd = extractJsonLd(html, pageUrl)
+    if (fromJsonLd[0]?.images.length > 0) return fromJsonLd[0].images
+    const $ = cheerio.load(html)
+    const main = $('main, article, [class*="content"], [class*="detail"], [role="main"]').first()
+    return pickAllImgSrcs(main.length ? main : $('body'), pageUrl)
+  }
+
+  // Follow each vehicle's source URL to collect its full image gallery
+  private static async _enrichImages(vehicles: ScrapedVehicle[], indexUrl: string): Promise<void> {
+    const toEnrich = vehicles.filter(
+      v => v.images.length < 2 && v.sourceUrl && v.sourceUrl !== indexUrl
+    ).slice(0, 12) // cap at 12 concurrent detail-page fetches
+
+    if (toEnrich.length === 0) return
+
+    await Promise.all(toEnrich.map(async (v) => {
+      try {
+        const html = await ScraperService._fetchStatic(v.sourceUrl, 10000)
+        const imgs = ScraperService._extractDetailImages(html, v.sourceUrl)
+        if (imgs.length > v.images.length) v.images = imgs
+      } catch { /* skip — keep whatever image(s) we already have */ }
+    }))
   }
 
   private static _parseHtml(html: string, url: string, urlLower: string): ScrapedVehicle[] {
