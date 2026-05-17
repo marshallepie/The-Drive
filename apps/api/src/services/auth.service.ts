@@ -13,6 +13,8 @@ interface RegisterData {
   lastName: string
   role?: UserRole
   phone?: string
+  dealershipName?: string
+  dealershipLicense?: string
 }
 
 interface LoginData {
@@ -25,7 +27,7 @@ export class AuthService {
    * Register a new user
    */
   static async register(data: RegisterData) {
-    const { email, password, firstName, lastName, role = 'PUBLIC', phone } = data
+    const { email, password, firstName, lastName, role = 'PUBLIC', phone, dealershipName, dealershipLicense } = data
 
     // Check if user already exists
     const existingUser = await pool.query(
@@ -42,10 +44,10 @@ export class AuthService {
 
     // Create user
     const result = await pool.query(
-      `INSERT INTO users (email, password_hash, first_name, last_name, role, phone)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, email, first_name, last_name, role, phone, wallet_address, kyc_status, is_active, created_at`,
-      [email.toLowerCase(), passwordHash, firstName, lastName, role, phone]
+      `INSERT INTO users (email, password_hash, first_name, last_name, role, phone, dealership_name, dealership_license)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, email, first_name, last_name, role, phone, wallet_address, kyc_status, is_active, dealership_name, created_at`,
+      [email.toLowerCase(), passwordHash, firstName, lastName, role, phone || null, dealershipName || null, dealershipLicense || null]
     )
 
     const user = result.rows[0]

@@ -81,20 +81,26 @@ export default function Navbar() {
               <>
                 <Link
                   href="/vehicles"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
                 >
                   <span className="sm:hidden">Browse</span>
                   <span className="hidden sm:inline">Browse Vehicles</span>
                 </Link>
                 <Link
+                  href="/dealers"
+                  className="hidden sm:inline bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
+                >
+                  For Dealers
+                </Link>
+                <Link
                   href="/auth/login"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
                 >
                   Login
                 </Link>
                 <Link
                   href="/auth/register"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
                 >
                   Register
                 </Link>

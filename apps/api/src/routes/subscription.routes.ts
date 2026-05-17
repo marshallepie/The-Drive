@@ -35,9 +35,11 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     try {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+      const plan: 'monthly' | 'annual' = req.body.plan === 'monthly' ? 'monthly' : 'annual'
       const result = await SubscriptionService.createCheckoutSession(
         req.user!.id,
-        frontendUrl
+        frontendUrl,
+        plan
       )
       res.json({ status: 'success', data: result })
     } catch (error: any) {
@@ -71,11 +73,15 @@ router.post('/webhook', async (req: Request, res: Response) => {
     )
 
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as { id: string; payment_intent: string | null }
-      await SubscriptionService.activateFromWebhook(
-        session.id,
-        session.payment_intent ?? ''
-      )
+      const session = event.data.object as {
+        id: string
+        mode: string
+        payment_intent: string | null
+        subscription: string | null
+      }
+      // payment_intent for one-time (annual), subscription for recurring (monthly)
+      const paymentRef = session.payment_intent ?? session.subscription ?? ''
+      await SubscriptionService.activateFromWebhook(session.id, paymentRef)
     }
 
     res.json({ received: true })

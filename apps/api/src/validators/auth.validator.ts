@@ -26,6 +26,12 @@ export const registerSchema = Joi.object({
   phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).optional().allow('').messages({
     'string.pattern.base': 'Please provide a valid phone number',
   }),
+  dealershipName: Joi.string().max(200).when('role', {
+    is: 'DEALER',
+    then: Joi.required().messages({ 'any.required': 'Dealership name is required for dealer accounts' }),
+    otherwise: Joi.optional().allow(''),
+  }),
+  dealershipLicense: Joi.string().max(100).optional().allow(''),
 })
 
 export const loginSchema = Joi.object({

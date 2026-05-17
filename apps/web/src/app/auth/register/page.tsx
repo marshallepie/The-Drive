@@ -1,11 +1,16 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import apiClient from '@/lib/api/client'
 import { UserRole } from '@drive/shared'
 
-export default function RegisterPage() {
+function RegisterFormInner() {
+  const searchParams = useSearchParams()
+  const initialRole = (searchParams.get('role') as UserRole) || 'PUBLIC'
+  const initialPlan = searchParams.get('plan') || 'annual'
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -13,7 +18,9 @@ export default function RegisterPage() {
     firstName: '',
     lastName: '',
     phone: '',
-    role: 'PUBLIC' as UserRole,
+    role: initialRole,
+    dealershipName: '',
+    dealershipLicense: '',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -37,13 +44,17 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      const registerData = {
+      const registerData: Record<string, string> = {
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone,
         role: formData.role,
+      }
+      if (formData.role === 'DEALER') {
+        registerData.dealershipName = formData.dealershipName
+        registerData.dealershipLicense = formData.dealershipLicense
       }
       const response = await apiClient.post('/api/v1/auth/register', registerData)
 
@@ -53,9 +64,11 @@ export default function RegisterPage() {
         localStorage.setItem('refreshToken', response.data.data.tokens.refreshToken)
         localStorage.setItem('user', JSON.stringify(response.data.data.user))
 
-        // Dealers go to subscription setup; everyone else goes home
+        // Dealers go to subscription setup (carry plan choice); everyone else goes home
         window.location.href =
-          response.data.data.user.role === 'DEALER' ? '/subscription' : '/'
+          response.data.data.user.role === 'DEALER'
+            ? `/subscription?plan=${initialPlan}`
+            : '/'
       }
     } catch (err: any) {
       setError(
@@ -157,6 +170,38 @@ export default function RegisterPage() {
               </select>
             </div>
 
+            {formData.role === 'DEALER' && (
+              <>
+                <div>
+                  <label htmlFor="dealershipName" className="block text-sm font-medium mb-2">
+                    Dealership Name <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="dealershipName"
+                    value={formData.dealershipName}
+                    onChange={(e) => setFormData({ ...formData, dealershipName: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
+                    placeholder="e.g. Premier Cars Ltd"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="dealershipLicense" className="block text-sm font-medium mb-2">
+                    Dealer Licence Number <span className="text-gray-500 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="dealershipLicense"
+                    value={formData.dealershipLicense}
+                    onChange={(e) => setFormData({ ...formData, dealershipLicense: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
+                    placeholder="e.g. FCA123456"
+                  />
+                </div>
+              </>
+            )}
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium mb-2">
                 Password
@@ -206,5 +251,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-black" />}>
+      <RegisterFormInner />
+    </Suspense>
   )
 }
