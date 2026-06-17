@@ -7,25 +7,25 @@ import Navbar from '@/components/Navbar'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'The Drive - Automotive Marketplace',
-  description: 'Buy and sell vehicles with traditional or Web3 payments',
+  title: 'The Drive — Investor Preview',
+  description: 'Invited-access preview of The Drive while the marketplace remains under construction.',
   openGraph: {
-    title: 'The Drive - Automotive Marketplace',
-    description: 'Buy and sell vehicles with traditional or Web3 payments',
+    title: 'The Drive — Investor Preview',
+    description: 'Invited-access preview of The Drive while the marketplace remains under construction.',
     images: [
       {
         url: '/drive-front-page-range.png',
         width: 1200,
         height: 600,
-        alt: 'The Drive - Automotive Marketplace',
+        alt: 'The Drive — Investor Preview',
       },
     ],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'The Drive - Automotive Marketplace',
-    description: 'Buy and sell vehicles with traditional or Web3 payments',
+    title: 'The Drive — Investor Preview',
+    description: 'Invited-access preview of The Drive while the marketplace remains under construction.',
     images: ['/drive-front-page-range.png'],
   },
 }

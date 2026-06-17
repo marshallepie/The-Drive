@@ -66,6 +66,12 @@ A modern automotive marketplace platform with integrated Web3 capabilities, supp
 
    Edit each `.env` file with your configuration.
 
+   For the temporary invited-access gate on the web app, also set:
+   ```bash
+   DRIVE_PREVIEW_USERNAME=[REDACTED]
+   DRIVE_PREVIEW_PASSWORD=[REDACTED]
+   ```
+
 4. **Start the database**
    ```bash
    # Using Docker (recommended)

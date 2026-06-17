@@ -1,168 +1,155 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { FormEvent, useState } from 'react'
 
 const inputCls =
-  'w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-white/50 focus:outline-none focus:border-blue-400 focus:bg-white/15 transition'
-const selectCls =
-  'w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-400 transition'
+  'w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:border-amber-400/70 focus:outline-none focus:ring-2 focus:ring-amber-400/20'
 
 export default function Home() {
   const router = useRouter()
-  const [search, setSearch] = useState({
-    make: '',
-    maxPrice: '',
-    condition: '',
-    fuelType: '',
-    location: '',
-  })
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const set =
-    (key: keyof typeof search) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setSearch((s) => ({ ...s, [key]: e.target.value }))
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError('')
+    setIsSubmitting(true)
 
-  const handleSearch = () => {
-    const params = new URLSearchParams()
-    if (search.make.trim())     params.set('make', search.make.trim())
-    if (search.maxPrice)        params.set('maxPrice', search.maxPrice)
-    if (search.condition)       params.set('condition', search.condition)
-    if (search.fuelType)        params.set('fuelType', search.fuelType)
-    if (search.location.trim()) params.set('location', search.location.trim())
-    const qs = params.toString()
-    router.push(`/vehicles${qs ? '?' + qs : ''}`)
+    try {
+      const response = await fetch('/api/preview-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+
+      const payload = await response.json()
+
+      if (!response.ok) {
+        setError(payload.error || 'Access could not be granted.')
+        return
+      }
+
+      router.push(payload.redirectTo || '/vehicles')
+      router.refresh()
+    } catch {
+      setError('Preview access is temporarily unavailable. Please try again shortly.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Hero Image with Search Overlay */}
-        <div className="mb-8 shadow-xl relative overflow-hidden group">
-
-          {/* Mobile Image */}
-          <div className="block md:hidden">
-            <Image
-              src="/drive-range.png"
-              alt="Drive automotive marketplace"
-              width={800}
-              height={600}
-              className="w-full h-auto object-cover"
-              priority
-            />
-          </div>
-
-          {/* Desktop Image */}
-          <div className="hidden md:block rounded-lg overflow-hidden">
-            <Image
-              src="/drive-front-page-range.png"
-              alt="Drive automotive marketplace"
-              width={1200}
-              height={600}
-              className="w-full h-auto object-cover"
-              priority
-            />
-          </div>
-
-          {/* Search Overlay — always visible on mobile, fold-away on large screens until hero is hovered */}
-          <div className="absolute top-4 left-4 lg:left-auto lg:right-6 lg:top-6 w-1/2 bg-black/55 backdrop-blur-md rounded-lg px-4 py-5 md:px-6 md:py-6 lg:opacity-0 lg:-translate-y-2 lg:pointer-events-none lg:group-hover:opacity-100 lg:group-hover:translate-y-0 lg:group-hover:pointer-events-auto transition-all duration-300 ease-out">
-            <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">
-              Find your vehicle
+    <main className="min-h-screen bg-[#050505] text-white">
+      <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl items-center px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid w-full gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-950 via-black to-zinc-900 p-8 shadow-2xl shadow-black/40 sm:p-10">
+            <div className="mb-6 inline-flex items-center rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-amber-200">
+              Investor Preview • Under Construction
+            </div>
+            <h1 className="max-w-3xl text-4xl font-semibold leading-tight sm:text-5xl">
+              The Drive is currently under construction.
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
+              This preview is available to invited viewers only during development.
+              If you have been issued a username and password by Marshall, continue below.
             </p>
-            <div className="flex flex-col gap-2">
 
-              <input
-                type="text"
-                placeholder="Make (e.g. BMW)"
-                value={search.make}
-                onChange={set('make')}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className={inputCls}
-              />
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/80">Current state</p>
+                <p className="mt-3 text-sm leading-6 text-white/70">Marketplace, finance, and Web3 flows are still being refined before broader release.</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/80">Who gets access</p>
+                <p className="mt-3 text-sm leading-6 text-white/70">Invited investors, collaborators, and approved reviewers during this preview phase.</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/80">Need credentials?</p>
+                <p className="mt-3 text-sm leading-6 text-white/70">Request temporary access directly from Marshall before broader public launch.</p>
+              </div>
+            </div>
 
-              <select value={search.maxPrice} onChange={set('maxPrice')} className={selectCls}>
-                <option value=""      className="bg-gray-900 text-white">Any Price</option>
-                <option value="10000" className="bg-gray-900 text-white">Under £10,000</option>
-                <option value="25000" className="bg-gray-900 text-white">Under £25,000</option>
-                <option value="50000" className="bg-gray-900 text-white">Under £50,000</option>
-                <option value="100000" className="bg-gray-900 text-white">Under £100,000</option>
-                <option value="250000" className="bg-gray-900 text-white">Under £250,000</option>
-              </select>
+            <div className="mt-8 flex flex-wrap gap-3 text-sm">
+              <Link
+                href="mailto:me@marshallepie.com?subject=The%20Drive%20preview%20access"
+                className="rounded-full border border-white/15 px-4 py-2 text-white/80 transition hover:border-amber-400/50 hover:text-white"
+              >
+                Request access
+              </Link>
+              <Link
+                href="/pitch"
+                className="rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-amber-100 transition hover:bg-amber-400/15"
+              >
+                View pitch materials
+              </Link>
+            </div>
+          </div>
 
-              <select value={search.condition} onChange={set('condition')} className={selectCls}>
-                <option value=""                   className="bg-gray-900 text-white">Any Condition</option>
-                <option value="NEW"                className="bg-gray-900 text-white">New</option>
-                <option value="USED"               className="bg-gray-900 text-white">Used</option>
-                <option value="CERTIFIED_PRE_OWNED" className="bg-gray-900 text-white">Certified Pre-Owned</option>
-              </select>
+          <div className="rounded-3xl border border-white/10 bg-zinc-950/80 p-6 shadow-2xl shadow-black/40 backdrop-blur sm:p-8">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/45">Preview access</p>
+            <h2 className="mt-3 text-2xl font-semibold text-white">Enter issued credentials</h2>
+            <p className="mt-3 text-sm leading-6 text-white/65">
+              Access is controlled during development. Credentials are issued manually by Marshall.
+            </p>
 
-              <select value={search.fuelType} onChange={set('fuelType')} className={selectCls}>
-                <option value=""              className="bg-gray-900 text-white">Any Fuel Type</option>
-                <option value="PETROL"        className="bg-gray-900 text-white">Petrol</option>
-                <option value="DIESEL"        className="bg-gray-900 text-white">Diesel</option>
-                <option value="ELECTRIC"      className="bg-gray-900 text-white">Electric</option>
-                <option value="HYBRID"        className="bg-gray-900 text-white">Hybrid</option>
-                <option value="PLUG_IN_HYBRID" className="bg-gray-900 text-white">Plug-in Hybrid</option>
-              </select>
+            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+              <div>
+                <label htmlFor="username" className="mb-2 block text-sm font-medium text-white/80">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="Issued username"
+                  className={inputCls}
+                  required
+                />
+              </div>
 
-              <input
-                type="text"
-                placeholder="Location"
-                value={search.location}
-                onChange={set('location')}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className={inputCls}
-              />
+              <div>
+                <label htmlFor="password" className="mb-2 block text-sm font-medium text-white/80">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Issued password"
+                  className={inputCls}
+                  required
+                />
+              </div>
+
+              {error ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {error}
+                </div>
+              ) : null}
 
               <button
-                onClick={handleSearch}
-                className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white px-7 py-2 rounded-lg text-sm font-semibold transition-colors"
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-400/50"
               >
-                Search
+                {isSubmitting ? 'Checking access…' : 'Continue to preview'}
               </button>
+            </form>
+
+            <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-sm leading-6 text-white/60">
+              Temporary preview access is a staging measure only. Stronger access control should replace this before wider launch.
             </div>
           </div>
         </div>
-
-        {/* Mobile Tagline */}
-        <div className="block md:hidden mb-12 text-center px-4">
-          <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
-            The Web 3 Marketplace And Vault For Collector Cars
-          </h1>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link
-            href="/vehicles"
-            className="p-6 border border-gray-700 rounded-lg bg-gray-900 hover:bg-gray-800 hover:border-blue-500 transition-all cursor-pointer group"
-          >
-            <h2 className="text-2xl font-semibold mb-2 text-white group-hover:text-blue-400 transition-colors">
-              Browse Vehicles
-            </h2>
-            <p className="text-gray-300">
-              Discover thousands of vehicles from dealers and private sellers
-            </p>
-          </Link>
-
-          <div className="p-6 border border-gray-700 rounded-lg bg-gray-900">
-            <h2 className="text-2xl font-semibold mb-2 text-white">Secure Payments</h2>
-            <p className="text-gray-300">
-              Pay with traditional methods or cryptocurrency via smart contract escrow
-            </p>
-          </div>
-
-          <div className="p-6 border border-gray-700 rounded-lg bg-gray-900">
-            <h2 className="text-2xl font-semibold mb-2 text-white">Finance Options</h2>
-            <p className="text-gray-300">
-              Apply for financing directly through our platform
-            </p>
-          </div>
-        </div>
-
-      </div>
+      </section>
     </main>
   )
 }

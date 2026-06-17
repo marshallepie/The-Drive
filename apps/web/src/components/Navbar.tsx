@@ -79,30 +79,20 @@ export default function Navbar() {
               </>
             ) : (
               <>
+                <span className="hidden rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-200 md:inline-flex">
+                  Preview only
+                </span>
                 <Link
-                  href="/vehicles"
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
-                >
-                  <span className="sm:hidden">Browse</span>
-                  <span className="hidden sm:inline">Browse Vehicles</span>
-                </Link>
-                <Link
-                  href="/dealers"
+                  href="/pitch"
                   className="hidden sm:inline bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
                 >
-                  For Dealers
+                  Pitch Deck
                 </Link>
                 <Link
-                  href="/auth/login"
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/auth/register"
+                  href="mailto:me@marshallepie.com?subject=The%20Drive%20preview%20access"
                   className="bg-blue-600 hover:bg-blue-500 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
                 >
-                  Register
+                  Request Access
                 </Link>
               </>
             )}
