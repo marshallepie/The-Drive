@@ -8,6 +8,11 @@
 
 [build.environment]
   NEXT_PUBLIC_API_URL = "https://the-drive-api-kd0n.onrender.com"
+  # Google Analytics 4 — public measurement ID, baked into the build so the
+  # live deploy always ships GA regardless of Netlify UI env settings.
+  NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-SLMCVVRSX4"
+  # GA4 cross-domain (linker) tracking — stitch sessions across these domains.
+  NEXT_PUBLIC_GA_LINKER_DOMAINS = "marshallepie.com,tagmything.com,jobbuilda.co.uk,the-path-of-clarity.mixmarshallarts.com,me-technical-school.netlify.app,the-drive-web3.netlify.app,mepie-foundation.org"
 
 # Redirect all requests to Next.js
 [[redirects]]
