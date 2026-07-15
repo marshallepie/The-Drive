@@ -1,21 +1,18 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { Suspense } from 'react'
 import './globals.css'
 import { Providers } from './providers'
 import Navbar from '@/components/Navbar'
 import GoogleAnalytics from '@/components/GoogleAnalytics'
-import RouteChangeTracker from '@/components/RouteChangeTracker'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://the-drive-web3.netlify.app'),
-  title: 'The Drive — DRIVE Token Launch',
-  description: 'Investor preview of The Drive token launch, roadmap, tokenomics, and compliance materials.',
+  title: 'The Drive — Investor Preview',
+  description: 'Invited-access preview of The Drive while the marketplace remains under construction.',
   openGraph: {
-    title: 'The Drive — DRIVE Token Launch',
-    description: 'Investor preview of The Drive token launch, roadmap, tokenomics, and compliance materials.',
+    title: 'The Drive — Investor Preview',
+    description: 'Invited-access preview of The Drive while the marketplace remains under construction.',
     images: [
       {
         url: '/drive-front-page-range.png',
@@ -28,8 +25,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'The Drive — DRIVE Token Launch',
-    description: 'Investor preview of The Drive token launch, roadmap, tokenomics, and compliance materials.',
+    title: 'The Drive — Investor Preview',
+    description: 'Invited-access preview of The Drive while the marketplace remains under construction.',
     images: ['/drive-front-page-range.png'],
   },
 }
@@ -44,9 +41,6 @@ export default function RootLayout({
       <body className={inter.className}>
         <GoogleAnalytics />
         <Providers>
-          <Suspense fallback={null}>
-            <RouteChangeTracker />
-          </Suspense>
           <Navbar />
           {children}
         </Providers>

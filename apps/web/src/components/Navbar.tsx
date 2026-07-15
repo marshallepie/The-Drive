@@ -62,14 +62,6 @@ export default function Navbar() {
                 )}
               </Link>
             )}
-            {!isAuthenticated && (
-              <div className="hidden lg:flex items-center gap-4 text-sm text-gray-300">
-                <Link href="/drive-token" className="hover:text-white transition-colors">Drive Token</Link>
-                <Link href="/tokenomics" className="hover:text-white transition-colors">Tokenomics</Link>
-                <Link href="/roadmap" className="hover:text-white transition-colors">Roadmap</Link>
-                <Link href="/compliance" className="hover:text-white transition-colors">Compliance</Link>
-              </div>
-            )}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -94,7 +86,7 @@ export default function Navbar() {
                   href="/pitch"
                   className="hidden sm:inline bg-gray-800 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
                 >
-                  Investor Pitch
+                  Pitch Deck
                 </Link>
                 <Link
                   href="mailto:me@marshallepie.com?subject=The%20Drive%20preview%20access"
