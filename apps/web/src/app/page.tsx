@@ -51,17 +51,17 @@ export default function Home() {
               Investor Preview • Under Construction
             </div>
             <h1 className="max-w-3xl text-4xl font-semibold leading-tight sm:text-5xl">
-              The Drive is currently under construction.
+              The Drive investor materials are under construction.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
               This preview is available to invited viewers only during development.
-              If you have been issued a username and password by Marshall, continue below.
+              If you have been issued a username and password by Marshall, continue below to review the DRIVE token launch materials.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/80">Current state</p>
-                <p className="mt-3 text-sm leading-6 text-white/70">Marketplace, finance, and Web3 flows are still being refined before broader release.</p>
+                <p className="mt-3 text-sm leading-6 text-white/70">Investor routes, tokenomics, roadmap, and compliance materials are being prepared around the current DRIVE launch narrative.</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/80">Who gets access</p>
@@ -84,7 +84,7 @@ export default function Home() {
                 href="/pitch"
                 className="rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-amber-100 transition hover:bg-amber-400/15"
               >
-                View pitch materials
+                View investor pitch
               </Link>
             </div>
           </div>
