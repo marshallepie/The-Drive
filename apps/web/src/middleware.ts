@@ -9,6 +9,8 @@ export function middleware(request: NextRequest) {
   const isPublicRoute =
     pathname === '/' ||
     pathname.startsWith('/api/preview-login') ||
+    pathname.startsWith('/api/preview-access-request') ||
+    pathname.startsWith('/api/preview-access-approve') ||
     pathname.startsWith('/_next') ||
     PUBLIC_FILE.test(pathname)
 

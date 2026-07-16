@@ -89,7 +89,7 @@ export default function Navbar() {
                   Pitch Deck
                 </Link>
                 <Link
-                  href="mailto:me@marshallepie.com?subject=The%20Drive%20preview%20access"
+                  href="/#request-access"
                   className="bg-blue-600 hover:bg-blue-500 text-white px-3 sm:px-4 py-2 rounded transition-colors text-sm sm:text-base"
                 >
                   Request Access

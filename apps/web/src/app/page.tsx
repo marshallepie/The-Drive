@@ -1,51 +1,112 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { FormEvent, useState } from 'react'
+import { FormEvent, useMemo, useState } from 'react'
 
 const inputCls =
   'w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:border-amber-400/70 focus:outline-none focus:ring-2 focus:ring-amber-400/20'
 
 export default function Home() {
-  const router = useRouter()
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loginError, setLoginError] = useState('')
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const [requestName, setRequestName] = useState('')
+  const [requestEmail, setRequestEmail] = useState('')
+  const [requestCompany, setRequestCompany] = useState('')
+  const [requestReason, setRequestReason] = useState('')
+  const [requestError, setRequestError] = useState('')
+  const [requestSuccess, setRequestSuccess] = useState('')
+  const [isRequesting, setIsRequesting] = useState(false)
+
+  const nextPath = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return '/vehicles'
+    }
+
+    const value = new URLSearchParams(window.location.search).get('next')
+    return value || '/vehicles'
+  }, [])
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError('')
-    setIsSubmitting(true)
+    setLoginError('')
+    setIsLoggingIn(true)
 
     try {
       const response = await fetch('/api/preview-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password, next: nextPath }),
       })
 
       const payload = await response.json()
 
       if (!response.ok) {
-        setError(payload.error || 'Access could not be granted.')
+        setLoginError(payload.error || 'Access could not be granted.')
         return
       }
 
-      router.push(payload.redirectTo || '/vehicles')
-      router.refresh()
+      if (payload.tokens) {
+        localStorage.setItem('accessToken', payload.tokens.accessToken)
+        localStorage.setItem('refreshToken', payload.tokens.refreshToken)
+      }
+      if (payload.user) {
+        localStorage.setItem('user', JSON.stringify(payload.user))
+      }
+
+      window.location.href = payload.redirectTo || nextPath
     } catch {
-      setError('Preview access is temporarily unavailable. Please try again shortly.')
+      setLoginError('Preview access is temporarily unavailable. Please try again shortly.')
     } finally {
-      setIsSubmitting(false)
+      setIsLoggingIn(false)
+    }
+  }
+
+  const handleRequestAccess = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setRequestError('')
+    setRequestSuccess('')
+    setIsRequesting(true)
+
+    try {
+      const response = await fetch('/api/preview-access-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: requestName,
+          email: requestEmail,
+          company: requestCompany,
+          reason: requestReason,
+        }),
+      })
+
+      const payload = await response.json()
+
+      if (!response.ok) {
+        setRequestError(payload.error || 'Preview access could not be requested right now.')
+        return
+      }
+
+      setRequestSuccess(
+        payload.message || 'Your preview access request has been sent. Marshall Epie will be in touch.',
+      )
+      setRequestName('')
+      setRequestEmail('')
+      setRequestCompany('')
+      setRequestReason('')
+    } catch {
+      setRequestError('Preview access could not be requested right now.')
+    } finally {
+      setIsRequesting(false)
     }
   }
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl items-center px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid w-full gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="grid w-full gap-8 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-950 via-black to-zinc-900 p-8 shadow-2xl shadow-black/40 sm:p-10">
             <div className="mb-6 inline-flex items-center rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-amber-200">
               Investor Preview • Under Construction
@@ -55,7 +116,7 @@ export default function Home() {
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
               This preview is available to invited viewers only during development.
-              If you have been issued a username and password by Marshall, continue below.
+              Approved viewers sign in with <strong className="text-white">email and password</strong> credentials issued after review.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -68,14 +129,14 @@ export default function Home() {
                 <p className="mt-3 text-sm leading-6 text-white/70">Invited investors, collaborators, and approved reviewers during this preview phase.</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/80">Need credentials?</p>
-                <p className="mt-3 text-sm leading-6 text-white/70">Request temporary access directly from Marshall before broader public launch.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/80">Approval flow</p>
+                <p className="mt-3 text-sm leading-6 text-white/70">Request access, await approval, then receive issued email/password credentials before signing in.</p>
               </div>
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3 text-sm">
               <Link
-                href="mailto:me@marshallepie.com?subject=The%20Drive%20preview%20access"
+                href="#request-access"
                 className="rounded-full border border-white/15 px-4 py-2 text-white/80 transition hover:border-amber-400/50 hover:text-white"
               >
                 Request access
@@ -89,63 +150,152 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-zinc-950/80 p-6 shadow-2xl shadow-black/40 backdrop-blur sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/45">Preview access</p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">Enter issued credentials</h2>
-            <p className="mt-3 text-sm leading-6 text-white/65">
-              Access is controlled during development. Credentials are issued manually by Marshall.
-            </p>
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-white/10 bg-zinc-950/80 p-6 shadow-2xl shadow-black/40 backdrop-blur sm:p-8">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/45">Preview access</p>
+              <h2 className="mt-3 text-2xl font-semibold text-white">Sign in with approved credentials</h2>
+              <p className="mt-3 text-sm leading-6 text-white/65">
+                Preview access now uses issued <strong className="text-white">email and password</strong> credentials rather than a shared username gate.
+              </p>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-              <div>
-                <label htmlFor="username" className="mb-2 block text-sm font-medium text-white/80">
-                  Username
-                </label>
-                <input
-                  id="username"
-                  type="text"
-                  autoComplete="username"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  placeholder="Issued username"
-                  className={inputCls}
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="mb-2 block text-sm font-medium text-white/80">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Issued password"
-                  className={inputCls}
-                  required
-                />
-              </div>
-
-              {error ? (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                  {error}
+              <form onSubmit={handleLogin} className="mt-8 space-y-4">
+                <div>
+                  <label htmlFor="email" className="mb-2 block text-sm font-medium text-white/80">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="you@example.com"
+                    className={inputCls}
+                    required
+                  />
                 </div>
-              ) : null}
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-400/50"
-              >
-                {isSubmitting ? 'Checking access…' : 'Continue to preview'}
-              </button>
-            </form>
+                <div>
+                  <label htmlFor="password" className="mb-2 block text-sm font-medium text-white/80">
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Issued password"
+                    className={inputCls}
+                    required
+                  />
+                </div>
 
-            <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-sm leading-6 text-white/60">
-              Temporary preview access is a staging measure only. Stronger access control should replace this before wider launch.
+                {loginError ? (
+                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {loginError}
+                  </div>
+                ) : null}
+
+                <button
+                  type="submit"
+                  disabled={isLoggingIn}
+                  className="w-full rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-400/50"
+                >
+                  {isLoggingIn ? 'Checking access…' : 'Continue to preview'}
+                </button>
+              </form>
+            </div>
+
+            <div id="request-access" className="rounded-3xl border border-white/10 bg-zinc-950/80 p-6 shadow-2xl shadow-black/40 backdrop-blur sm:p-8">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/45">Request access</p>
+              <h2 className="mt-3 text-2xl font-semibold text-white">Ask for preview access</h2>
+              <p className="mt-3 text-sm leading-6 text-white/65">
+                Submit your details below. Your request will be sent to Marshall Epie for review, and approved viewers will receive issued sign-in credentials.
+              </p>
+
+              <form onSubmit={handleRequestAccess} className="mt-8 space-y-4">
+                <div>
+                  <label htmlFor="request-name" className="mb-2 block text-sm font-medium text-white/80">
+                    Full name
+                  </label>
+                  <input
+                    id="request-name"
+                    type="text"
+                    value={requestName}
+                    onChange={(event) => setRequestName(event.target.value)}
+                    placeholder="Your name"
+                    className={inputCls}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="request-email" className="mb-2 block text-sm font-medium text-white/80">
+                    Email
+                  </label>
+                  <input
+                    id="request-email"
+                    type="email"
+                    value={requestEmail}
+                    onChange={(event) => setRequestEmail(event.target.value)}
+                    placeholder="you@example.com"
+                    className={inputCls}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="request-company" className="mb-2 block text-sm font-medium text-white/80">
+                    Company / organisation <span className="text-white/40">optional</span>
+                  </label>
+                  <input
+                    id="request-company"
+                    type="text"
+                    value={requestCompany}
+                    onChange={(event) => setRequestCompany(event.target.value)}
+                    placeholder="Company or context"
+                    className={inputCls}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="request-reason" className="mb-2 block text-sm font-medium text-white/80">
+                    Why do you need access? <span className="text-white/40">optional</span>
+                  </label>
+                  <textarea
+                    id="request-reason"
+                    value={requestReason}
+                    onChange={(event) => setRequestReason(event.target.value)}
+                    placeholder="Tell us why you need preview access"
+                    className={`${inputCls} min-h-[110px] resize-y`}
+                  />
+                </div>
+
+                {requestSuccess ? (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                    {requestSuccess}
+                  </div>
+                ) : null}
+
+                {requestError ? (
+                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {requestError}
+                  </div>
+                ) : null}
+
+                <button
+                  type="submit"
+                  disabled={isRequesting}
+                  className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:border-amber-400/40 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isRequesting ? 'Sending request…' : 'Request preview access'}
+                </button>
+              </form>
+
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-sm leading-6 text-white/60">
+                Once approved, credentials can be issued and sent directly to the requester. This gives a clear approval path instead of a silent mailto link.
+              </div>
             </div>
           </div>
         </div>
